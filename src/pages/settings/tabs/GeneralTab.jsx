@@ -1,24 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardBody, CardFooter } from '../../../shared/components/Card';
 import { Button } from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/Toast';
-
-const INITIAL_GENERAL_STATE = {
-  businessName: 'Acme Global Commerce',
-  businessId: 'biz_live_948a291cf673e04',
-  businessType: 'ecommerce',
-  timezone: 'America/New_York',
-  autoRefreshInterval: '30s',
-  currency: 'USD',
-  supportEmail: 'cto-ops@acmeglobal.com',
-};
+import { useTenant } from '../../../shared/context/TenantContext';
 
 export function GeneralTab() {
   const { addToast } = useToast();
-  const [formData, setFormData] = useState(INITIAL_GENERAL_STATE);
-  const [savedData, setSavedData] = useState(INITIAL_GENERAL_STATE);
+  const { selectedBusiness, openOnboarding } = useTenant();
+
+  const [formData, setFormData] = useState({
+    businessName: selectedBusiness?.name || 'Acme Global Commerce',
+    businessId: selectedBusiness?.id || 'biz_live_948a291cf673e04',
+    businessType: selectedBusiness?.type || 'ecommerce',
+    timezone: selectedBusiness?.timezone || 'America/New_York',
+    autoRefreshInterval: '30s',
+    currency: 'USD',
+    supportEmail: 'cto-ops@acmeglobal.com',
+  });
+
+  const [savedData, setSavedData] = useState(formData);
   const [saving, setSaving] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+
+  useEffect(() => {
+    if (selectedBusiness) {
+      const updated = {
+        businessName: selectedBusiness.name || '',
+        businessId: selectedBusiness.id || '',
+        businessType: selectedBusiness.type || 'ecommerce',
+        timezone: selectedBusiness.timezone || 'America/New_York',
+        autoRefreshInterval: '30s',
+        currency: 'USD',
+        supportEmail: 'cto-ops@acmeglobal.com',
+      };
+      setFormData(updated);
+      setSavedData(updated);
+    }
+  }, [selectedBusiness]);
 
   const isDirty = JSON.stringify(formData) !== JSON.stringify(savedData);
 
@@ -50,10 +68,25 @@ export function GeneralTab() {
   return (
     <div className="settings-tab-pane">
       <div className="settings-tab-pane__header">
-        <h2 className="settings-tab-pane__title">General Settings</h2>
-        <p className="settings-tab-pane__subtitle">
-          Manage your organization profile, default timezone, live data refresh cadence, and base currency.
-        </p>
+        <div>
+          <h2 className="settings-tab-pane__title">General Settings</h2>
+          <p className="settings-tab-pane__subtitle">
+            Manage your organization profile, default timezone, live data refresh cadence, and base currency.
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => openOnboarding()}
+          icon={
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          }
+        >
+          Connect a New Business
+        </Button>
       </div>
 
       <div className="settings-form-grid">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Badge } from '../../../shared/components/Badge';
 import { Button } from '../../../shared/components/Button';
 import { BUSINESS_PROFILES } from '../dashboardData';
+import { useTenant } from '../../../shared/context/TenantContext';
 
 const REFRESH_INTERVALS = [
   { label: '5s', value: 5000 },
@@ -11,7 +12,7 @@ const REFRESH_INTERVALS = [
 ];
 
 export function DashboardTopBar({
-  selectedBusiness,
+  selectedBusiness: propSelectedBusiness,
   onBusinessChange,
   isConnected,
   onToggleConnection,
@@ -34,6 +35,11 @@ export function DashboardTopBar({
   const businessRef = useRef(null);
   const bellRef = useRef(null);
   const intervalRef = useRef(null);
+
+  // Connect to tenant context
+  const { businesses: contextBusinesses, selectedBusiness: contextSelectedBusiness, openOnboarding } = useTenant();
+  const availableBusinesses = contextBusinesses && contextBusinesses.length > 0 ? contextBusinesses : BUSINESS_PROFILES;
+  const currentBusiness = propSelectedBusiness || contextSelectedBusiness || availableBusinesses[0];
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -60,11 +66,11 @@ export function DashboardTopBar({
           <div className="dashboard-topbar__heading-row">
             <h1 className="dashboard-topbar__title">Operations Control Center</h1>
             <Badge variant="violet" size="sm" className="dashboard-topbar__type-badge">
-              {selectedBusiness.typeLabel}
+              {currentBusiness.typeLabel}
             </Badge>
           </div>
           <p className="dashboard-topbar__subtitle">
-            Live telemetry & automated incident mitigation · {selectedBusiness.region}
+            Live telemetry & automated incident mitigation · {currentBusiness.region}
           </p>
         </div>
 
@@ -86,8 +92,8 @@ export function DashboardTopBar({
               </svg>
             </span>
             <div className="dashboard-tenant-selector__meta">
-              <span className="dashboard-tenant-selector__name">{selectedBusiness.name}</span>
-              <span className="dashboard-tenant-selector__tier">{selectedBusiness.domain}</span>
+              <span className="dashboard-tenant-selector__name">{currentBusiness.name}</span>
+              <span className="dashboard-tenant-selector__tier">{currentBusiness.domain}</span>
             </div>
             <svg
               className={`dashboard-tenant-selector__chevron ${businessDropdownOpen ? 'dashboard-tenant-selector__chevron--open' : ''}`}
@@ -105,12 +111,12 @@ export function DashboardTopBar({
           {businessDropdownOpen && (
             <div className="dashboard-dropdown-menu">
               <div className="dashboard-dropdown-menu__header">Switch Active Tenant</div>
-              {BUSINESS_PROFILES.map((biz) => (
+              {availableBusinesses.map((biz) => (
                 <button
                   key={biz.id}
-                  className={`dashboard-dropdown-item ${biz.id === selectedBusiness.id ? 'dashboard-dropdown-item--active' : ''}`}
+                  className={`dashboard-dropdown-item ${biz.id === currentBusiness.id ? 'dashboard-dropdown-item--active' : ''}`}
                   onClick={() => {
-                    onBusinessChange(biz);
+                    if (onBusinessChange) onBusinessChange(biz);
                     setBusinessDropdownOpen(false);
                   }}
                 >
@@ -121,6 +127,20 @@ export function DashboardTopBar({
                   <span className="dashboard-dropdown-item__tag">{biz.typeLabel}</span>
                 </button>
               ))}
+
+              <div className="dashboard-dropdown-divider" />
+
+              <button
+                type="button"
+                className="dashboard-dropdown-action-btn"
+                onClick={() => {
+                  setBusinessDropdownOpen(false);
+                  openOnboarding();
+                }}
+              >
+                <span className="dashboard-dropdown-action-btn__icon">+</span>
+                <span>Add New Business</span>
+              </button>
             </div>
           )}
         </div>

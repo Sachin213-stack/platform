@@ -19,6 +19,7 @@ import { TrafficRevenueChart } from './components/TrafficRevenueChart';
 import { CapacitySnapshot } from './components/CapacitySnapshot';
 import { RecentActivityFeed } from './components/RecentActivityFeed';
 import { DashboardSkeleton, DashboardErrorState } from './components/DashboardSkeleton';
+import { useTenant } from '../../shared/context/TenantContext';
 
 /**
  * DashboardPage (Operations Control Center)
@@ -27,7 +28,7 @@ import { DashboardSkeleton, DashboardErrorState } from './components/DashboardSk
  */
 export default function DashboardPage({ onNavigate, onShowToast }) {
   // ── State Management ───────────────────────────────────────────
-  const [selectedBusiness, setSelectedBusiness] = useState(BUSINESS_PROFILES[0]);
+  const { selectedBusiness, setSelectedBusiness } = useTenant();
   const [isConnected, setIsConnected] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5s default

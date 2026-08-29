@@ -1,0 +1,946 @@
+/* ============================================================
+   Billing & Subscriptions Styles
+   Theme-aware, dark violet default, glassmorphic accents
+   ============================================================ */
+
+.billing-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  animation: dashboardFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  padding-bottom: var(--space-12);
+}
+
+/* ── Page Header ────────────────────────────────────────────── */
+.billing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.billing-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.billing-header__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.billing-header__subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.billing-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ── Overage Warning Banner ─────────────────────────────────── */
+.billing-alert-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border: 1px solid var(--color-status-warning-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.08);
+  animation: bannerSlideDown 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.billing-alert-banner--critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border-color: var(--color-status-error-border);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.1);
+}
+
+.billing-alert-banner__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.billing-alert-banner__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-status-warning-bg);
+  color: var(--color-status-warning);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.billing-alert-banner--critical .billing-alert-banner__icon {
+  background: var(--color-status-error-bg);
+  color: var(--color-status-error);
+}
+
+.billing-alert-banner__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.billing-alert-banner__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.billing-alert-banner__text {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Usage Overview Grid ────────────────────────────────────── */
+.usage-overview-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 1024px) {
+  .usage-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.usage-cycles-badge-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.cycle-date-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cycle-date-item__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cycle-date-item__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+}
+
+.cycle-date-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border-light);
+}
+
+.usage-meters-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.usage-meter-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.usage-meter-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.usage-meter-item__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.usage-meter-item__stats {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.usage-meter-item__stats strong {
+  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.usage-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="light"] .usage-progress-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.usage-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--color-accent);
+}
+
+.usage-progress-fill--violet {
+  background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%);
+}
+
+.usage-progress-fill--emerald {
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+}
+
+.usage-progress-fill--amber {
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.usage-progress-fill--rose {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+
+/* ── Usage Trend Mini Chart ──────────────────────────────────── */
+.usage-trend-chart-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.usage-trend-chart-container {
+  position: relative;
+  width: 100%;
+  height: 170px;
+  margin-top: var(--space-2);
+  background: transparent; /* transparent rule */
+}
+
+.usage-trend-chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.trend-dot {
+  cursor: pointer;
+  transition: transform var(--transition-fast), r var(--transition-fast);
+}
+
+.trend-dot:hover {
+  transform: scale(1.4);
+}
+
+.trend-tooltip {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(18, 18, 30, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  pointer-events: none;
+  font-size: var(--text-xs);
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="light"] .trend-tooltip {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.trend-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-3);
+}
+
+.trend-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ── Tier Cards Section ─────────────────────────────────────── */
+.tier-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.tier-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.billing-toggle-container {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 4px;
+}
+
+[data-theme="light"] .billing-toggle-container {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.billing-toggle-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.billing-toggle-btn--active {
+  background: var(--color-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--color-accent-glow);
+}
+
+.billing-toggle-btn:hover:not(.billing-toggle-btn--active) {
+  color: var(--color-text-primary);
+}
+
+.save-pill {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+}
+
+.tier-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+@media (max-width: 900px) {
+  .tier-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tier-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  position: relative;
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.tier-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-border-default);
+}
+
+.tier-card--current {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 20px var(--color-accent-glow);
+}
+
+.tier-card--popular {
+  border-color: var(--color-border-violet);
+}
+
+.tier-card__popular-badge {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+}
+
+.tier-card__header {
+  margin-bottom: var(--space-4);
+}
+
+.tier-card__name {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tier-card__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  min-height: 32px;
+}
+
+.tier-card__price-box {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.tier-card__price {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+}
+
+.tier-card__price-old {
+  font-size: var(--text-md);
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+  margin-right: 4px;
+}
+
+.tier-card__period {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.tier-card__features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  flex-grow: 1;
+}
+
+.tier-card__feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.tier-card__feature-icon {
+  color: var(--color-status-success);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tier-card__feature-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tier-card__action {
+  margin-top: auto;
+}
+
+/* ── Promo Code Block ───────────────────────────────────────── */
+.promo-code-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.promo-code-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  max-width: 360px;
+}
+
+.promo-code-input-group input {
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+}
+
+.promo-applied-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-status-success-bg);
+  border: 1px solid var(--color-status-success-border);
+  color: var(--color-status-success);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.promo-applied-chip button {
+  color: currentColor;
+  opacity: 0.7;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.promo-applied-chip button:hover {
+  opacity: 1;
+}
+
+/* ── Two-Column Layout for Middle Sections ──────────────────── */
+.billing-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 1024px) {
+  .billing-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Payment Methods Card ───────────────────────────────────── */
+.payment-methods-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.payment-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+  gap: var(--space-3);
+}
+
+.payment-card-row--primary {
+  border-color: var(--color-accent-border);
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.payment-card-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.payment-card-brand-icon {
+  width: 40px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+}
+
+[data-theme="light"] .payment-card-brand-icon {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.payment-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.payment-card-number {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.payment-card-meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.payment-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Billing Address Section ────────────────────────────────── */
+.billing-address-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.billing-address-form__full {
+  grid-column: 1 / -1;
+}
+
+.field-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* ── Invoices / Billing History ─────────────────────────────── */
+.invoice-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.invoice-search-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 240px;
+}
+
+.invoice-search-filter input {
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+}
+
+.invoice-status-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  padding: 2px;
+}
+
+.invoice-filter-pill {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.invoice-filter-pill--active {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.invoices-table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.invoices-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-xs);
+}
+
+.invoices-table th {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-text-tertiary);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border-subtle);
+  white-space: nowrap;
+}
+
+.invoices-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.invoices-table tr:last-child td {
+  border-bottom: none;
+}
+
+.invoices-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.invoice-id-cell {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-medium);
+}
+
+/* ── Usage Alerts Settings Block ────────────────────────────── */
+.usage-alerts-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.threshold-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.threshold-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.threshold-value-badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.threshold-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+}
+
+.threshold-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 10px var(--color-accent-glow);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.threshold-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.channels-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.channel-chip-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.channel-chip-btn--active {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-border);
+  color: var(--color-text-primary);
+  font-weight: var(--weight-medium);
+}
+
+/* ── Danger Zone ────────────────────────────────────────────── */
+.billing-danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.danger-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.15);
+  gap: var(--space-4);
+}
+
+.danger-action-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.danger-action-row__text {
+  flex: 1;
+}
+
+.danger-action-row__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-status-error);
+}
+
+.danger-action-row__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Retention Step in Cancel Modal ─────────────────────────── */
+.retention-box {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.03) 100%);
+  border: 1px solid var(--color-accent-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.retention-features-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.retention-features-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.retention-offer-banner {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid var(--color-status-success-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.retention-offer-text {
+  font-size: var(--text-xs);
+  color: var(--color-status-success);
+  font-weight: var(--weight-medium);
+}
+
+/* ── Itemized Tax Breakdown Modal ────────────────────────────── */
+.invoice-tax-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.tax-line-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  padding: 4px 0;
+}
+
+.tax-line-item--bold {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  border-top: 1px solid var(--color-border-light);
+  padding-top: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+@keyframes bannerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

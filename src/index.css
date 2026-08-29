@@ -136,16 +136,16 @@
   --color-bg-tertiary: #f1f5f9;
   --color-bg-card: rgba(255, 255, 255, 0.95);
   --color-bg-card-hover: #ffffff;
-  --color-bg-sidebar: #0f172a;
-  --color-bg-sidebar-hover: #1e293b;
-  --color-bg-sidebar-active: #2e1065;
+  --color-bg-sidebar: #ffffff;
+  --color-bg-sidebar-hover: #f1f5f9;
+  --color-bg-sidebar-active: var(--color-accent-subtle);
 
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-tertiary: #94a3b8;
   --color-text-inverse: #f8fafc;
-  --color-text-sidebar: #94a3b8;
-  --color-text-sidebar-active: #ffffff;
+  --color-text-sidebar: #475569;
+  --color-text-sidebar-active: var(--color-accent);
 
   --color-border-subtle: rgba(0, 0, 0, 0.05);
   --color-border-light: rgba(0, 0, 0, 0.08);

@@ -96,7 +96,7 @@
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(12px);
   position: sticky;
-  top: calc(var(--topbar-height) + var(--space-4));
+  top: var(--space-6);
 }
 
 .settings-nav-card__label {
@@ -376,7 +376,8 @@
 
 .theme-mode-card__preview--light .preview-mini-sidebar {
   width: 14px;
-  background: #0f172a;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
 }
 
 .theme-mode-card__preview--light .preview-mini-content {
@@ -820,4 +821,100 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* ── Light Theme Adaptations for Settings ────────────────────── */
+[data-theme="light"] .settings-nav-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .settings-nav-item:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+[data-theme="light"] .settings-nav-item--active {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+}
+
+[data-theme="light"] .settings-nav-item__icon {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+[data-theme="light"] .theme-mode-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .theme-mode-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .theme-mode-card--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+[data-theme="light"] .palette-swatch-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .palette-swatch-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .palette-swatch-card--selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+[data-theme="light"] .appearance-live-preview {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .settings-table th {
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme="light"] .settings-table td {
+  border-bottom-color: #f1f5f9;
+  color: #0f172a;
+}
+
+[data-theme="light"] .settings-table tr:hover td {
+  background: #f8fafc;
+}
+
+[data-theme="light"] .settings-code-token {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme="light"] .channel-chip {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+[data-theme="light"] .channel-chip:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme="light"] .channel-chip--active {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
 }

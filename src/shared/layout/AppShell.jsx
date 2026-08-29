@@ -209,18 +209,14 @@ export default function AppShell({
 
       {/* ── Content region ──────────────────────────────────── */}
       <div className={contentClasses}>
-        {/* TopBar */}
-        <header className="app-shell__topbar">
-          <button
-            className="app-shell__menu-btn"
-            onClick={openSidebar}
-            aria-label="Open navigation menu"
-          >
-            {Icons.hamburger}
-          </button>
-
-          {topbar || <DefaultTopbar title={derivedTitle} currentNav={currentNav} />}
-        </header>
+        {/* Mobile menu button (visible only on mobile/tablet screens) */}
+        <button
+          className="app-shell__mobile-menu-btn"
+          onClick={openSidebar}
+          aria-label="Open navigation menu"
+        >
+          {Icons.hamburger}
+        </button>
 
         {/* Main content */}
         <main className="app-shell__main" id="main-content" key={currentNav}>
@@ -305,23 +301,11 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse })
   );
 }
 
-function DefaultTopbar({ title, currentNav }) {
+function DefaultTopbar() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <div className="topbar-inner">
-      <div className="topbar-left">
-        <h1 className="topbar__title">{title}</h1>
-        <div className="topbar-breadcrumbs" aria-label="Breadcrumb">
-          <span>AI-CTO</span>
-          <span className="topbar-breadcrumbs__separator">/</span>
-          <span className="topbar-breadcrumbs__current">
-            {NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.id === currentNav)?.label ||
-              'Dashboard'}
-          </span>
-        </div>
-      </div>
-
       <div className="topbar-right">
         {/* Search toggle */}
         <button

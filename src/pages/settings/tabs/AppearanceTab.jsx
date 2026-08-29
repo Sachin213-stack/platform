@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardHeader, CardBody } from '../../../shared/components/Card';
 import { Badge } from '../../../shared/components/Badge';
 import { Button } from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/Toast';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 const ACCENT_COLORS = [
   { id: 'violet', label: 'Dark Violet', hex: '#8b5cf6', desc: 'Default AI-CTO signature' },
@@ -15,52 +16,34 @@ const ACCENT_COLORS = [
 
 export function AppearanceTab() {
   const { addToast } = useToast();
-
-  const [themeMode, setThemeMode] = useState(() => {
-    return localStorage.getItem('aicto-theme') || document.documentElement.getAttribute('data-theme') || 'dark';
-  });
-
-  const [accentColor, setAccentColor] = useState(() => {
-    return localStorage.getItem('aicto-accent') || document.documentElement.getAttribute('data-accent') || 'violet';
-  });
-
-  const [density, setDensity] = useState(() => {
-    return localStorage.getItem('aicto-density') || document.documentElement.getAttribute('data-density') || 'comfortable';
-  });
-
-  const [fontSize, setFontSize] = useState(() => {
-    return localStorage.getItem('aicto-font-size') || document.documentElement.getAttribute('data-font-size') || 'medium';
-  });
+  const {
+    theme: themeMode,
+    setTheme: handleThemeSelect,
+    accentColor,
+    setAccentColor: handleAccentSelect,
+    density,
+    setDensity: handleDensitySelect,
+    fontSize,
+    setFontSize: handleFontSizeSelect,
+  } = useTheme();
 
   const handleThemeChange = (mode) => {
-    setThemeMode(mode);
-    if (mode === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-    localStorage.setItem('aicto-theme', mode);
-    addToast(`Theme set to ${mode === 'light' ? 'Light mode' : 'Dark violet mode'}`, 'info');
+    handleThemeSelect(mode);
+    addToast(`Theme set to ${mode === 'light' ? 'Light daylight mode' : 'Dark violet mode'}`, 'info');
   };
 
   const handleAccentChange = (accentId) => {
-    setAccentColor(accentId);
-    document.documentElement.setAttribute('data-accent', accentId);
-    localStorage.setItem('aicto-accent', accentId);
+    handleAccentSelect(accentId);
     addToast(`Accent palette changed to ${accentId.toUpperCase()}`, 'success');
   };
 
   const handleDensityChange = (newDensity) => {
-    setDensity(newDensity);
-    document.documentElement.setAttribute('data-density', newDensity);
-    localStorage.setItem('aicto-density', newDensity);
+    handleDensitySelect(newDensity);
     addToast(`Dashboard density set to ${newDensity}`, 'info');
   };
 
   const handleFontSizeChange = (newSize) => {
-    setFontSize(newSize);
-    document.documentElement.setAttribute('data-font-size', newSize);
-    localStorage.setItem('aicto-font-size', newSize);
+    handleFontSizeSelect(newSize);
     addToast(`Platform font size set to ${newSize}`, 'info');
   };
 

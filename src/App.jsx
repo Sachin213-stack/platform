@@ -7,11 +7,15 @@ import FridayAIPage from './modules/act/FridayAIPage';
 import AuditLogPage from './modules/detect/AuditLogPage';
 import BillingPage from './pages/billing/BillingPage';
 import { ToastProvider, useToast } from './shared/components/Toast';
+import { ThemeProvider } from './shared/context/ThemeContext';
+import { TenantProvider, useTenant } from './shared/context/TenantContext';
+import { OnboardingWizard } from './modules/onboarding/OnboardingWizard';
 
 function AppContent() {
   const [currentNav, setCurrentNav] = useState('dashboard');
   const [navContext, setNavContext] = useState(null);
   const { addToast } = useToast();
+  const { isOnboardingOpen, closeOnboarding } = useTenant();
 
   const handleNavigate = (targetNav, context = null) => {
     setCurrentNav(targetNav);
@@ -43,57 +47,73 @@ function AppContent() {
   };
 
   return (
-    <AppShell
-      activeNav={currentNav}
-      onNavChange={(id) => {
-        setCurrentNav(id);
-        setNavContext(null);
-      }}
-      pageTitle={getPageTitle()}
-    >
-      {currentNav === 'dashboard' && (
-        <DashboardPage
-          onNavigate={handleNavigate}
-          onShowToast={handleShowToast}
-        />
-      )}
+    <>
+      <AppShell
+        activeNav={currentNav}
+        onNavChange={(id) => {
+          setCurrentNav(id);
+          setNavContext(null);
+        }}
+        pageTitle={getPageTitle()}
+      >
+        {currentNav === 'dashboard' && (
+          <DashboardPage
+            onNavigate={handleNavigate}
+            onShowToast={handleShowToast}
+          />
+        )}
 
-      {currentNav === 'analytics' && (
-        <AnalyticsPage
-          onNavigate={handleNavigate}
-        />
-      )}
+        {currentNav === 'analytics' && (
+          <AnalyticsPage
+            onNavigate={handleNavigate}
+          />
+        )}
 
-      {currentNav === 'friday-ai' && (
-        <FridayAIPage
-          initialContext={navContext}
-          onNavigate={handleNavigate}
-        />
-      )}
+        {currentNav === 'friday-ai' && (
+          <FridayAIPage
+            initialContext={navContext}
+            onNavigate={handleNavigate}
+          />
+        )}
 
-      {currentNav === 'billing' && (
-        <BillingPage
-          onNavigate={handleNavigate}
-        />
-      )}
+        {currentNav === 'billing' && (
+          <BillingPage
+            onNavigate={handleNavigate}
+          />
+        )}
 
-      {currentNav === 'settings' && (
-        <SettingsPage />
-      )}
+        {currentNav === 'settings' && (
+          <SettingsPage />
+        )}
 
-      {currentNav === 'audit-logs' && (
-        <AuditLogPage
-          onNavigate={handleNavigate}
-        />
-      )}
-    </AppShell>
+        {currentNav === 'audit-logs' && (
+          <AuditLogPage
+            onNavigate={handleNavigate}
+          />
+        )}
+      </AppShell>
+
+      {/* Global Multi-Step Onboarding Wizard Modal */}
+      <OnboardingWizard
+        isOpen={isOnboardingOpen}
+        onClose={closeOnboarding}
+        onCompleted={() => {
+          handleNavigate('dashboard');
+        }}
+      />
+    </>
   );
 }
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <TenantProvider>
+          <AppContent />
+        </TenantProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
+

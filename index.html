@@ -6,6 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AI-CTO Platform — Monitor, Detect, and Act on your infrastructure with AI-powered insights." />
     <title>AI-CTO Platform</title>
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('aicto-theme') || 'dark';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+          var savedAccent = localStorage.getItem('aicto-accent') || 'violet';
+          document.documentElement.setAttribute('data-accent', savedAccent);
+          var savedDensity = localStorage.getItem('aicto-density') || 'comfortable';
+          document.documentElement.setAttribute('data-density', savedDensity);
+          var savedFontSize = localStorage.getItem('aicto-font-size') || 'medium';
+          document.documentElement.setAttribute('data-font-size', savedFontSize);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
