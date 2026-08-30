@@ -241,7 +241,7 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
     <>
       {/* ── Header: logo + collapse toggle ──────────────────── */}
       <div className="sidebar-header">
-        <a href="/" className="sidebar-logo" aria-label="AI-CTO Home" onClick={(e) => { e.preventDefault(); if (onSignOut) onSignOut(); }}>
+        <a href="/app" className="sidebar-logo" aria-label="AI-CTO Home" onClick={(e) => { e.preventDefault(); onNavClick('dashboard'); }}>
           <span className="sidebar-logo__icon">{Icons.logo}</span>
           <span className="sidebar-logo__text">AI-CTO</span>
         </a>
@@ -299,21 +299,21 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
       {/* ── Keyboard shortcut hint ──────────────────────────── */}
       <div className="sidebar-shortcut-hint">Ctrl+B to collapse</div>
 
-      {/* ── Footer: user profile ────────────────────────────── */}
+      {/* ── Footer: user profile + sign out ───────────────────── */}
       <div className="sidebar-footer">
         <div
           className="sidebar-footer__user"
           role="button"
           tabIndex={0}
-          aria-label="User profile"
+          aria-label="Sign out"
           onClick={onSignOut}
-          title="Click to view marketing landing page"
+          title="Sign out and return to home page"
         >
           <div className="sidebar-footer__avatar">U</div>
           <div className="sidebar-footer__info">
             <div className="sidebar-footer__name">User (Admin)</div>
             <div className="sidebar-footer__role" style={{ color: 'var(--color-accent-light)' }}>
-              ← View Landing Page
+              Sign Out
             </div>
           </div>
         </div>

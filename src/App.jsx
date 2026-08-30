@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AppShell from './shared/layout/AppShell';
 import DashboardPage from './modules/monitor/DashboardPage';
 import SettingsPage from './pages/settings/SettingsPage';
@@ -14,6 +14,23 @@ import { AnalyticsProvider } from './shared/context/AnalyticsContext';
 import { OnboardingWizard } from './modules/onboarding/OnboardingWizard';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
 
+/* ── Lightweight URL-based routing helpers (no React Router needed) ── */
+const APP_BASE = '/app';
+
+/** Read current pathname from the browser */
+function getCurrentPath() {
+  return window.location.pathname;
+}
+
+/** Navigate to a path via pushState (no page reload) */
+function navigateTo(path) {
+  if (window.location.pathname !== path) {
+    window.history.pushState(null, '', path);
+    // Dispatch a custom event so React state can react to pushState changes
+    window.dispatchEvent(new Event('app-navigate'));
+  }
+}
+
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     try {
@@ -23,44 +40,75 @@ function AppContent() {
     }
   });
 
+  const [currentPath, setCurrentPath] = useState(getCurrentPath);
   const [currentNav, setCurrentNav] = useState('dashboard');
   const [navContext, setNavContext] = useState(null);
   const { addToast } = useToast();
   const { isOnboardingOpen, openOnboarding, closeOnboarding } = useTenant();
 
-  const handleNavigate = (targetNav, context = null) => {
+  /* ── Listen for popstate (back/forward) and our custom pushState events ── */
+  useEffect(() => {
+    const syncPath = () => setCurrentPath(getCurrentPath());
+    window.addEventListener('popstate', syncPath);
+    window.addEventListener('app-navigate', syncPath);
+    return () => {
+      window.removeEventListener('popstate', syncPath);
+      window.removeEventListener('app-navigate', syncPath);
+    };
+  }, []);
+
+  /* ── URL ↔ auth-state redirect logic ── */
+  useEffect(() => {
+    const path = currentPath;
+
+    if (isLoggedIn && (path === '/' || path === '')) {
+      // Authenticated user on landing page → redirect to /app
+      navigateTo(APP_BASE);
+    } else if (!isLoggedIn && path.startsWith(APP_BASE)) {
+      // Unauthenticated user trying to access /app → redirect to landing
+      navigateTo('/');
+    }
+  }, [isLoggedIn, currentPath]);
+
+  const handleNavigate = useCallback((targetNav, context = null) => {
     setCurrentNav(targetNav);
     setNavContext(context);
-  };
+    // Ensure we're on the app route when navigating within the app
+    navigateTo(APP_BASE);
+  }, []);
 
-  const handleLogin = (targetNav = 'dashboard') => {
+  const handleLogin = useCallback((targetNav = 'dashboard') => {
     setIsLoggedIn(true);
     try {
       localStorage.setItem('aicto_is_logged_in', 'true');
     } catch {}
-    handleNavigate(targetNav);
+    setCurrentNav(targetNav);
+    setNavContext(null);
+    navigateTo(APP_BASE);
     addToast('Welcome back to AI-CTO Operations Platform', 'success');
-  };
+  }, [addToast]);
 
-  const handleStartFree = () => {
+  const handleStartFree = useCallback(() => {
     setIsLoggedIn(true);
     try {
       localStorage.setItem('aicto_is_logged_in', 'true');
     } catch {}
+    navigateTo(APP_BASE);
     openOnboarding();
-  };
+  }, [openOnboarding]);
 
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     setIsLoggedIn(false);
     try {
       localStorage.setItem('aicto_is_logged_in', 'false');
     } catch {}
-    addToast('Signed out. Viewing public marketing portal.', 'info');
-  };
+    navigateTo('/');
+    addToast('Signed out successfully.', 'info');
+  }, [addToast]);
 
-  const handleShowToast = ({ title, message, variant = 'success' }) => {
+  const handleShowToast = useCallback(({ title, message, variant = 'success' }) => {
     addToast(`${title ? `${title}: ` : ''}${message}`, variant);
-  };
+  }, [addToast]);
 
   // Derive topbar title dynamically
   const getPageTitle = () => {
@@ -82,8 +130,12 @@ function AppContent() {
     }
   };
 
-  // Unauthenticated visitors see the Marketing Landing Page at root route
-  if (!isLoggedIn) {
+  /* ── Determine which view to render based on URL + auth state ── */
+  const isOnAppRoute = currentPath.startsWith(APP_BASE);
+
+  // Show Landing Page: at "/" when not logged in
+  // (If logged in at "/", the useEffect above will redirect to /app)
+  if (!isLoggedIn && !isOnAppRoute) {
     return (
       <>
         <LandingPage
@@ -104,7 +156,8 @@ function AppContent() {
     );
   }
 
-  // Authenticated users see the AppShell and platform screens
+  // Show Authenticated App: at "/app" when logged in
+  // (If not logged in at "/app", the useEffect above will redirect to /)
   return (
     <>
       <AppShell
@@ -184,3 +237,4 @@ export default function App() {
     </ThemeProvider>
   );
 }
+
