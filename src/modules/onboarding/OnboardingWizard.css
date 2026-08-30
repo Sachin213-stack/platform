@@ -426,6 +426,11 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+[data-theme="light"] .onboarding-biz-id-pill {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
 .onboarding-biz-id-pill__label {
   font-size: 11px;
   color: var(--color-text-tertiary);
@@ -506,6 +511,11 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+[data-theme="light"] .onboarding-install-guide {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
 .onboarding-install-guide__text {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
@@ -519,6 +529,11 @@
   padding: 2px 6px;
   border-radius: 4px;
   color: var(--color-accent-light);
+}
+
+[data-theme="light"] .onboarding-install-guide__text code {
+  background: #e2e8f0;
+  color: var(--color-accent);
 }
 
 /* ── Verification Box ── */
@@ -708,6 +723,21 @@
   border-color: var(--color-border-violet);
 }
 
+[data-theme="light"] .onboarding-kpi-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .onboarding-kpi-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .onboarding-kpi-item--selected {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-border);
+}
+
 .onboarding-kpi-item__checkbox input {
   width: 16px;
   height: 16px;
@@ -797,6 +827,21 @@
   background: rgba(16, 185, 129, 0.04);
 }
 
+[data-theme="light"] .onboarding-integration-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .onboarding-integration-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .onboarding-integration-card--connected {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
 .onboarding-integration-card--disabled {
   opacity: 0.6;
 }
@@ -819,6 +864,11 @@
   border: 1px solid var(--color-border-light);
 }
 
+[data-theme="light"] .onboarding-integration-icon {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
 .onboarding-integration-icon--shopify {
   color: #95bf47;
 }
@@ -833,6 +883,10 @@
 
 .onboarding-integration-icon--github {
   color: #f3f4f6;
+}
+
+[data-theme="light"] .onboarding-integration-icon--github {
+  color: #0f172a;
 }
 
 .onboarding-integration-icon--slack {

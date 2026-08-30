@@ -1,0 +1,100 @@
+/* ============================================================
+   AI-CTO Marketing Landing Page — Light Pink & Yellow Theme
+   Scoped strictly to .landing-page to protect app dark theme.
+   ============================================================ */
+
+.landing-page {
+  /* ── Dedicated Light Pink & Yellow Theme Tokens ────────────── */
+  --lp-bg-main: #fdf8fa;
+  --lp-bg-surface: #ffffff;
+  --lp-bg-surface-subtle: #fbf0f4;
+  --lp-bg-surface-hover: #fff1f5;
+  --lp-bg-card: rgba(255, 255, 255, 0.9);
+  --lp-bg-card-hover: rgba(255, 255, 255, 0.98);
+  
+  /* Text Tokens (High contrast dark charcoal against light surfaces) */
+  --lp-text-primary: #0f172a;       /* Slate 900 */
+  --lp-text-secondary: #334155;     /* Slate 700 */
+  --lp-text-muted: #64748b;         /* Slate 500 */
+  --lp-text-subtle: #94a3b8;        /* Slate 400 */
+  --lp-text-on-dark: #ffffff;
+  
+  /* Pink Accents */
+  --lp-pink-50: #fff1f3;
+  --lp-pink-100: #ffe4e8;
+  --lp-pink-200: #fecdd6;
+  --lp-pink-300: #fda4af;
+  --lp-pink-400: #fb7185;
+  --lp-pink-500: #f43f5e;
+  --lp-pink-600: #e11d48;
+  --lp-pink-700: #be123c;
+  
+  /* Yellow / Gold Accents */
+  --lp-yellow-50: #fefce8;
+  --lp-yellow-100: #fef9c3;
+  --lp-yellow-200: #fef08a;
+  --lp-yellow-400: #facc15;
+  --lp-yellow-500: #eab308;
+  --lp-yellow-600: #ca8a04;
+  --lp-yellow-dark: #b45309;
+  
+  /* Coral / Amber Bridges */
+  --lp-coral-500: #f97316;
+  --lp-amber-500: #f59e0b;
+  
+  /* Gradients */
+  --lp-gradient-primary: linear-gradient(135deg, #f43f5e 0%, #fb7185 45%, #f59e0b 100%);
+  --lp-gradient-primary-hover: linear-gradient(135deg, #e11d48 0%, #f43f5e 45%, #d97706 100%);
+  --lp-gradient-yellow: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  --lp-gradient-banner: linear-gradient(135deg, #be123c 0%, #e11d48 30%, #f43f5e 55%, #f59e0b 85%, #facc15 100%);
+  --lp-gradient-hero-text: linear-gradient(135deg, #e11d48 0%, #f43f5e 35%, #ea580c 70%, #d97706 100%);
+  
+  /* Borders & Shadows */
+  --lp-border-subtle: rgba(15, 23, 42, 0.06);
+  --lp-border-default: rgba(15, 23, 42, 0.1);
+  --lp-border-strong: rgba(15, 23, 42, 0.16);
+  --lp-border-pink: rgba(244, 63, 94, 0.25);
+  --lp-border-pink-strong: rgba(244, 63, 94, 0.45);
+  --lp-border-yellow: rgba(245, 158, 11, 0.3);
+  
+  --lp-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(244, 63, 94, 0.03);
+  --lp-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(244, 63, 94, 0.04);
+  --lp-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(244, 63, 94, 0.06);
+  --lp-shadow-pink-glow: 0 8px 30px rgba(244, 63, 94, 0.25);
+  --lp-shadow-yellow-glow: 0 8px 30px rgba(245, 158, 11, 0.25);
+
+  /* Page Baseline */
+  min-height: 100vh;
+  background-color: var(--lp-bg-main);
+  color: var(--lp-text-primary);
+  font-family: var(--font-body);
+  position: relative;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-page__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scroll Reveal Transitions ─────────────────────────────── */
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.landing-reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Selection Highlight */
+.landing-page ::selection {
+  background: rgba(244, 63, 94, 0.25);
+  color: #be123c;
+}

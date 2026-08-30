@@ -1,0 +1,394 @@
+/* ============================================================
+   AI-CTO Platform — Analytics & Capacity Forecasting Studio
+   Theme: Dark Violet / Slate Modern Enterprise
+   ============================================================ */
+
+.analytics-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  animation: dashboardFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Top Header ─────────────────────────────────────────────── */
+.analytics-header-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.analytics-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.analytics-top-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ── Model Metrics Card ─────────────────────────────────────── */
+.analytics-model-metrics-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.analytics-stat-pill {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analytics-stat-pill__label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-body);
+}
+
+.analytics-stat-pill__val-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.analytics-stat-pill__val {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+}
+
+.analytics-stat-pill__delta {
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+/* ── Ask FRIDAY Inline Button ───────────────────────────────── */
+.analytics-ask-friday-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  font-weight: var(--weight-medium);
+  color: var(--color-accent-light);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.analytics-ask-friday-btn:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-border);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--color-accent-glow);
+}
+
+/* ── Anomaly Timeline & Log ─────────────────────────────────── */
+.analytics-timeline-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.analytics-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.analytics-timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.analytics-search-input {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  outline: none;
+  font-family: var(--font-body);
+  width: 170px;
+  transition: border-color var(--transition-fast);
+}
+
+.analytics-search-input:focus {
+  border-color: var(--color-accent);
+}
+
+.analytics-timeline-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.analytics-anomaly-item {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.analytics-anomaly-item:hover {
+  border-color: var(--color-border-default);
+  background: var(--color-bg-card-hover);
+}
+
+.analytics-anomaly-item--selected {
+  border-color: var(--color-border-violet);
+  box-shadow: 0 0 12px var(--color-accent-glow);
+}
+
+.analytics-anomaly-item__header {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  gap: var(--space-3);
+  user-select: none;
+}
+
+.analytics-anomaly-item__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.analytics-anomaly-item__time {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.analytics-anomaly-item__service {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-accent-light);
+  background: var(--color-accent-subtle);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.analytics-anomaly-item__title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+}
+
+.analytics-anomaly-item__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.analytics-anomaly-item__deviation {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-status-error);
+  font-weight: var(--weight-bold);
+}
+
+.analytics-anomaly-chevron {
+  color: var(--color-text-tertiary);
+  transition: transform var(--transition-fast);
+}
+
+.analytics-anomaly-chevron--open {
+  transform: rotate(180deg);
+  color: var(--color-accent-light);
+}
+
+.analytics-anomaly-item__expanded {
+  border-top: 1px solid var(--color-border-subtle);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: dashboardFadeIn 150ms ease;
+}
+
+.analytics-anomaly-expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.analytics-exp-label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 2px;
+}
+
+.analytics-exp-val {
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+}
+
+.analytics-anomaly-rec-box {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-violet);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+/* ── Correlation View ───────────────────────────────────────── */
+.analytics-correlation-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.analytics-correlation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.analytics-correlation-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Forecast Curve Chart ───────────────────────────────────── */
+.analytics-forecast-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.analytics-forecast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.analytics-forecast-header__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.analytics-forecast-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Capacity Planner Tools Grid ────────────────────────────── */
+.analytics-capacity-planner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+.analytics-runway-card,
+.analytics-simulator-card,
+.analytics-cost-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.analytics-sim-metric-box {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analytics-sim-metric-label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.analytics-sim-metric-val {
+  font-size: var(--text-lg);
+  font-weight: bold;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+}
+
+.analytics-cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+}
+
+.analytics-cost-row__label {
+  color: var(--color-text-secondary);
+}
+
+.analytics-cost-row__val {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Responsive Stacking ────────────────────────────────────── */
+@media (max-width: 900px) {
+  .analytics-top-grid,
+  .analytics-capacity-planner-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-timeline-header,
+  .analytics-forecast-header,
+  .analytics-correlation-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

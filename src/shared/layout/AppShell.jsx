@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import './AppShell.css';
+import { useAnalytics } from '../context/AnalyticsContext';
 
 /* ── SVG Icons (inline, no external deps) ───────────────────── */
 const Icons = {
@@ -127,6 +128,7 @@ export default function AppShell({
   activeNav = 'dashboard',
   pageTitle = 'Dashboard',
   onNavChange,
+  onSignOut,
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -191,6 +193,7 @@ export default function AppShell({
             currentNav={currentNav}
             onNavClick={handleNavClick}
             onToggleCollapse={toggleCollapse}
+            onSignOut={onSignOut}
           />
         )}
       </aside>
@@ -231,12 +234,14 @@ export default function AppShell({
    DEFAULT SUB-COMPONENTS (replaced by real ones in later steps)
    ════════════════════════════════════════════════════════════ */
 
-function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse }) {
+function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, onSignOut }) {
+  const { activeAnomaliesCount } = useAnalytics();
+
   return (
     <>
       {/* ── Header: logo + collapse toggle ──────────────────── */}
       <div className="sidebar-header">
-        <a href="/" className="sidebar-logo" aria-label="AI-CTO Home">
+        <a href="/" className="sidebar-logo" aria-label="AI-CTO Home" onClick={(e) => { e.preventDefault(); if (onSignOut) onSignOut(); }}>
           <span className="sidebar-logo__icon">{Icons.logo}</span>
           <span className="sidebar-logo__text">AI-CTO</span>
         </a>
@@ -265,8 +270,20 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse })
               >
                 <span className="sidebar-nav__item-icon">{item.icon}</span>
                 <span className="sidebar-nav__item-label">{item.label}</span>
-                {item.badge && (
-                  <span className="sidebar-nav__badge">{item.badge}</span>
+                {item.id === 'friday-ai' && activeAnomaliesCount > 0 ? (
+                  <span
+                    className="sidebar-nav__badge"
+                    style={{
+                      background: 'var(--color-status-error)',
+                      color: '#ffffff',
+                      boxShadow: '0 0 8px var(--color-status-error)',
+                    }}
+                    title={`${activeAnomaliesCount} active anomalies detected`}
+                  >
+                    {activeAnomaliesCount}
+                  </span>
+                ) : (
+                  item.badge && <span className="sidebar-nav__badge">{item.badge}</span>
                 )}
                 {item.id === 'friday-ai' && (
                   <span className="status-dot status-dot--online" title="Online" />
@@ -289,11 +306,15 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse })
           role="button"
           tabIndex={0}
           aria-label="User profile"
+          onClick={onSignOut}
+          title="Click to view marketing landing page"
         >
           <div className="sidebar-footer__avatar">U</div>
           <div className="sidebar-footer__info">
-            <div className="sidebar-footer__name">User</div>
-            <div className="sidebar-footer__role">Administrator</div>
+            <div className="sidebar-footer__name">User (Admin)</div>
+            <div className="sidebar-footer__role" style={{ color: 'var(--color-accent-light)' }}>
+              ← View Landing Page
+            </div>
           </div>
         </div>
       </div>

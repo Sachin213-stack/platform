@@ -79,7 +79,7 @@ export function AppearanceTab() {
                 </div>
                 <div className="theme-mode-card__info">
                   <span className="theme-mode-card__label">Dark Violet Mode</span>
-                  <span className="theme-mode-card__desc">Reduced eye strain for night operations (Default)</span>
+                  <span className="theme-mode-card__desc">Reduced eye strain for night operations</span>
                 </div>
                 {themeMode === 'dark' && <span className="theme-mode-card__check">✓</span>}
               </button>
@@ -98,7 +98,7 @@ export function AppearanceTab() {
                 </div>
                 <div className="theme-mode-card__info">
                   <span className="theme-mode-card__label">Light Daylight Mode</span>
-                  <span className="theme-mode-card__desc">High-contrast clarity for well-lit rooms</span>
+                  <span className="theme-mode-card__desc">High-contrast clarity for well-lit rooms (Default)</span>
                 </div>
                 {themeMode === 'light' && <span className="theme-mode-card__check">✓</span>}
               </button>

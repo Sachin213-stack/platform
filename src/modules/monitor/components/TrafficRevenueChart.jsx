@@ -222,7 +222,7 @@ export function TrafficRevenueChart({
                 y1={y}
                 x2={SVG_WIDTH - PADDING.right}
                 y2={y}
-                stroke="rgba(255, 255, 255, 0.07)"
+                stroke="var(--color-border-subtle)"
                 strokeDasharray="4 4"
                 strokeWidth="1"
               />
@@ -306,7 +306,7 @@ export function TrafficRevenueChart({
               y1={PADDING.top}
               x2={hoverX}
               y2={PADDING.top + PLOT_HEIGHT}
-              stroke="rgba(255, 255, 255, 0.4)"
+              stroke="var(--color-text-tertiary)"
               strokeDasharray="3 3"
               strokeWidth="1.5"
             />

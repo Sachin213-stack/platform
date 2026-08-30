@@ -1,143 +1,228 @@
 import React, { useState } from 'react';
-import { Card } from '../../shared/components/Card';
-import { Badge } from '../../shared/components/Badge';
-import { Button } from '../../shared/components/Button';
+import './AnalyticsPage.css';
+import { useAnalytics } from '../../shared/context/AnalyticsContext';
+import { useToast } from '../../shared/components/Toast';
+import { ConfirmModal } from '../../shared/components/ConfirmModal';
+
+import { AnalyticsHeader } from './analytics/AnalyticsHeader';
+import { ModelMetrics } from './analytics/ModelMetrics';
+import { ForecastChart } from './analytics/ForecastChart';
+import { CorrelationView } from './analytics/CorrelationView';
+import { CapacityPlanner } from './analytics/CapacityPlanner';
+import { AnomalyTimeline } from './analytics/AnomalyTimeline';
+import { RootCauseBreakdown } from './analytics/RootCauseBreakdown';
 
 export default function AnalyticsPage({ onNavigate }) {
-  const [sensitivity, setSensitivity] = useState(85);
+  const {
+    sensitivity,
+    setSensitivity,
+    anomalies,
+    selectedAnomalyId,
+    setSelectedAnomalyId,
+    selectedAnomaly,
+    modelMetrics,
+    resourceRunway,
+    whatIfSpike,
+    setWhatIfSpike,
+    liveCrashRisk,
+    liveHeadroom,
+    applyRecommendation,
+  } = useAnalytics();
+
+  const { addToast } = useToast();
+
+  // ── Confirmation Modal State ─────────────────────────────────
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [isExecutingAction, setIsExecutingAction] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Handle "Ask FRIDAY about this" across all widgets
+  const handleAskFriday = (promptText, contextObj = null) => {
+    if (onNavigate) {
+      onNavigate('friday-ai', {
+        initialPrompt: promptText,
+        context: contextObj || {
+          sensitivity,
+          liveCrashRisk,
+          whatIfSpike,
+          resourceRunway,
+          anomaly: selectedAnomaly,
+        },
+      });
+    }
+  };
+
+  // Open confirmation modal for applying recommendation
+  const handleOpenRecommendationConfirm = (anomalyOrItem) => {
+    setPendingAction({
+      anomalyId: anomalyOrItem.id,
+      title: anomalyOrItem.title || 'Mitigation Action',
+      service: anomalyOrItem.service || 'Cluster Ingress',
+      actionName: anomalyOrItem.recommendedAction || 'Execute Automated Mitigation',
+    });
+    setIsConfirmOpen(true);
+  };
+
+  // Execute confirmed recommendation
+  const handleExecuteConfirmedAction = () => {
+    if (!pendingAction) return;
+    setIsExecutingAction(true);
+
+    setTimeout(() => {
+      applyRecommendation(pendingAction.anomalyId, pendingAction.actionName);
+      setIsExecutingAction(false);
+      setIsConfirmOpen(false);
+
+      addToast(
+        `Successfully applied recommendation: "${pendingAction.actionName}" on ${pendingAction.service}`,
+        'success'
+      );
+      setPendingAction(null);
+    }, 600);
+  };
+
+  // Export Analytics CSV Report
+  const handleExportReport = () => {
+    setIsExporting(true);
+    addToast('Generating Predictive Analytics & Capacity Forecast Report...', 'info');
+
+    setTimeout(() => {
+      try {
+        // Build CSV Content
+        const rows = [
+          ['AI-CTO Analytics & Capacity Forecasting Audit Report'],
+          ['Generated At', new Date().toISOString()],
+          ['Model Version', modelMetrics?.version || 'v3.2'],
+          ['Precision', `${modelMetrics?.precision}%`],
+          ['Recall', `${modelMetrics?.recall}%`],
+          ['False Positive Rate', `${modelMetrics?.falsePositiveRate}%`],
+          ['Active Sensitivity', `${sensitivity}%`],
+          ['Projected 24h Crash Risk', `${liveCrashRisk}%`],
+          ['Headroom Probability', `${liveHeadroom}%`],
+          ['Resource Runway', `${resourceRunway?.runwayDays} days (${resourceRunway?.exhaustionDate})`],
+          ['Simulated What-If Surge', `+${whatIfSpike}%`],
+          [],
+          ['Anomaly History Log'],
+          ['ID', 'Timestamp', 'Metric', 'Service', 'Severity', 'Status', 'Deviation', 'Title', 'Recommended Action'],
+          ...anomalies.map((a) => [
+            a.id,
+            a.timestamp,
+            a.metric,
+            a.service,
+            a.severity,
+            a.status,
+            a.deviation,
+            `"${a.title}"`,
+            `"${a.recommendedAction}"`,
+          ]),
+        ];
+
+        const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(',')).join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `aicto_analytics_forecast_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setIsExporting(false);
+        addToast('Forecast report exported successfully (CSV download complete).', 'success');
+      } catch (err) {
+        setIsExporting(false);
+        addToast('Failed to generate report export: ' + err.message, 'error');
+      }
+    }, 800);
+  };
 
   return (
-    <div className="analytics-page-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'dashboardFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', color: 'var(--color-text-primary)' }}>
-              Analytics & Capacity Forecasting Studio
-            </h2>
-            <Badge variant="violet" size="sm">Predictive ML Model v3.2</Badge>
-          </div>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-            Machine learning anomaly detection, crash risk probability, and resource runway models.
-          </p>
-        </div>
+    <div className="analytics-page-container">
+      {/* ── 1. Header & Studio Overview ── */}
+      <AnalyticsHeader
+        sensitivity={sensitivity}
+        onSensitivityChange={setSensitivity}
+        liveCrashRisk={liveCrashRisk}
+        liveHeadroom={liveHeadroom}
+        onNavigate={onNavigate}
+        onExportReport={handleExportReport}
+        onApplyRecommendation={handleOpenRecommendationConfirm}
+        onAskFriday={handleAskFriday}
+        isExporting={isExporting}
+      />
 
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => onNavigate && onNavigate('dashboard')}
-          icon={
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="19" y1="12" x2="5" y2="12" />
-              <polyline points="12 19 5 12 12 5" />
-            </svg>
+      {/* ── 2. Model Performance & Confidence Metrics ── */}
+      <ModelMetrics
+        modelMetrics={modelMetrics}
+        onAskFriday={handleAskFriday}
+      />
+
+      {/* ── 3. Predictive Capacity Curve with Comparison Mode & Time Range ── */}
+      <ForecastChart
+        whatIfSpike={whatIfSpike}
+        onAskFriday={handleAskFriday}
+      />
+
+      {/* ── 4. Multi-Metric Correlation View ── */}
+      <CorrelationView
+        onAskFriday={handleAskFriday}
+      />
+
+      {/* ── 5. Capacity Planning Deeper Tools (Runway + What-If + Cost) ── */}
+      <CapacityPlanner
+        resourceRunway={resourceRunway}
+        whatIfSpike={whatIfSpike}
+        onWhatIfChange={setWhatIfSpike}
+        liveCrashRisk={liveCrashRisk}
+        liveHeadroom={liveHeadroom}
+        onApplyRecommendation={handleOpenRecommendationConfirm}
+        onAskFriday={handleAskFriday}
+      />
+
+      {/* ── 6. Anomaly Timeline & Log ── */}
+      <AnomalyTimeline
+        anomalies={anomalies}
+        selectedAnomalyId={selectedAnomalyId}
+        onSelectAnomaly={setSelectedAnomalyId}
+        onApplyRecommendation={handleOpenRecommendationConfirm}
+        onAskFriday={handleAskFriday}
+      />
+
+      {/* ── 7. Root Cause Breakdown (Interactive Attribution) ── */}
+      <RootCauseBreakdown
+        anomaly={selectedAnomaly}
+        onApplyRecommendation={handleOpenRecommendationConfirm}
+        onAskFriday={handleAskFriday}
+      />
+
+      {/* ── 8. Action Confirmation Modal ── */}
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => {
+          if (!isExecutingAction) {
+            setIsConfirmOpen(false);
+            setPendingAction(null);
           }
-        >
-          ← Return to Dashboard
-        </Button>
-      </div>
-
-      {/* Top Studio Grid: Crash Risk Gauge & Sensitivity */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
-        <Card padding="normal">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-            <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>
-              Projected 24h Crash Risk
-            </h4>
-            <Badge variant="success" size="sm">Low Risk (4.2%)</Badge>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', margin: 'var(--space-2) 0' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-3xl)', fontWeight: 'bold', color: 'var(--color-status-success)' }}>
-              4.2%
-            </span>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
-              99.8% headroom probability
-            </span>
-          </div>
-          <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
-            <div style={{ width: '4.2%', height: '100%', background: 'var(--color-status-success)', borderRadius: '999px' }} />
-          </div>
-        </Card>
-
-        <Card padding="normal">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-            <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>
-              ML Anomaly Sensitivity
-            </h4>
-            <Badge variant="violet" size="sm">{sensitivity}% Active</Badge>
-          </div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-            Adjust detection threshold tolerance for microsecond latency deviations.
-          </p>
-          <input
-            type="range"
-            min="50"
-            max="99"
-            value={sensitivity}
-            onChange={(e) => setSensitivity(+e.target.value)}
-            style={{ width: '100%', accentColor: 'var(--color-accent)' }}
-          />
-        </Card>
-      </div>
-
-      {/* Forecast Curve Chart — Strictly adhering to transparent chart rule */}
-      <Card padding="normal">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
-              24-Hour Predictive Capacity Curve & Confidence Envelope
-            </h3>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
-              Historical throughput with ML upper/lower confidence bounds.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <Badge variant="violet" size="sm">Actual Telemetry</Badge>
-            <Badge variant="warning" size="sm">ML Predicted Peak</Badge>
-          </div>
-        </div>
-
-        {/* Transparent Chart Container */}
-        <div style={{ width: '100%', height: '240px', background: 'transparent' }}>
-          <svg viewBox="0 0 700 220" style={{ width: '100%', height: '100%', background: 'transparent' }} preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="forecastBand" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02" />
-              </linearGradient>
-            </defs>
-
-            {/* Subtle transparent gridlines */}
-            {[40, 90, 140, 190].map((y) => (
-              <line key={y} x1="40" y1={y} x2="680" y2={y} stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
-            ))}
-
-            {/* Confidence Area Band */}
-            <path
-              d="M 40,140 C 140,180 240,80 350,50 C 450,60 550,20 680,80 L 680,180 C 550,140 450,160 350,170 C 240,180 140,200 40,190 Z"
-              fill="url(#forecastBand)"
-            />
-
-            {/* Actual Line */}
-            <path
-              d="M 40,140 C 140,180 240,80 350,50 C 400,55 450,60 480,65"
-              fill="none"
-              stroke="#8b5cf6"
-              strokeWidth="2.5"
-            />
-
-            {/* Predicted Line (Dashed) */}
-            <path
-              d="M 480,65 C 550,20 620,40 680,80"
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="2.5"
-              strokeDasharray="5 5"
-            />
-          </svg>
-        </div>
-      </Card>
+        }}
+        onConfirm={handleExecuteConfirmedAction}
+        title="Confirm Operational Mitigation"
+        message={
+          pendingAction ? (
+            <>
+              Are you sure you want to execute recommendation{' '}
+              <strong style={{ color: 'var(--color-text-primary)' }}>"{pendingAction.actionName}"</strong> on service{' '}
+              <code style={{ color: 'var(--color-accent-light)', fontFamily: 'var(--font-mono)' }}>{pendingAction.service}</code>?
+              This will update the deployment topology and resolve the flagged anomaly.
+            </>
+          ) : (
+            'Are you sure you want to apply this recommendation?'
+          )
+        }
+        confirmLabel={isExecutingAction ? 'Executing...' : 'Apply Mitigation'}
+        cancelLabel="Cancel"
+        variant="primary"
+        loading={isExecutingAction}
+      />
     </div>
   );
 }

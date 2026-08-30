@@ -47,6 +47,21 @@
   border-color: var(--color-status-error-border);
 }
 
+[data-theme="light"] .ui-card--subtle {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .ui-card--accent {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.06) 0%, #ffffff 100%);
+  border-color: var(--color-accent-border);
+}
+
+[data-theme="light"] .ui-card--danger {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.05) 0%, #ffffff 100%);
+  border-color: var(--color-status-error-border);
+}
+
 .ui-card--glow {
   box-shadow: 0 0 25px var(--color-accent-glow);
 }

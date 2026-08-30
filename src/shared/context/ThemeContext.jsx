@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext({
-  theme: 'dark',
+  theme: 'light',
   setTheme: () => {},
   toggleTheme: () => {},
   accentColor: 'violet',
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }) {
     } catch {
       // ignore localStorage errors
     }
-    return 'dark';
+    return 'light';
   });
 
   const [accentColor, setAccentColorState] = useState(() => {
