@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import './AppShell.css';
 import { useAnalytics } from '../context/AnalyticsContext';
+import { getStoredUser, healthApi } from '../services/apiClient';
 
 /* ── SVG Icons (inline, no external deps) ───────────────────── */
 const Icons = {
@@ -236,6 +237,24 @@ export default function AppShell({
 
 function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, onSignOut }) {
   const { activeAnomaliesCount } = useAnalytics();
+  const [backendHealth, setBackendHealth] = useState({ status: 'checking', version: '2.0.0' });
+  const [storedUser, setStoredUser] = useState(() => getStoredUser());
+
+  useEffect(() => {
+    const checkStatus = () => {
+      healthApi.checkHealth().then((res) => {
+        if (res && res.status) {
+          setBackendHealth(res);
+        }
+      }).catch(() => {
+        setBackendHealth({ status: 'standalone' });
+      });
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 20000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
@@ -296,6 +315,42 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
         ))}
       </nav>
 
+      {/* ── Live Backend Connectivity Pill ────────────────── */}
+      {!collapsed && (
+        <div style={{
+          padding: '8px 12px',
+          margin: '0 12px 10px',
+          background: 'rgba(99, 102, 241, 0.08)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '0.74rem',
+          color: '#cbd5e1',
+        }}>
+          <span style={{
+            width: '7px',
+            height: '7px',
+            borderRadius: '50%',
+            background: backendHealth.status === 'degraded' || backendHealth.status === 'healthy' ? '#10b981' : '#f59e0b',
+            boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)',
+          }} />
+          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            FastAPI v{backendHealth.version || '2.0.0'} API
+          </span>
+          <span style={{
+            fontSize: '0.68rem',
+            padding: '1px 5px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '4px',
+            color: '#94a3b8'
+          }}>
+            {backendHealth.status === 'degraded' ? 'DEV' : 'PROD'}
+          </span>
+        </div>
+      )}
+
       {/* ── Keyboard shortcut hint ──────────────────────────── */}
       <div className="sidebar-shortcut-hint">Ctrl+B to collapse</div>
 
@@ -307,13 +362,17 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
           tabIndex={0}
           aria-label="Sign out"
           onClick={onSignOut}
-          title="Sign out and return to home page"
+          title="Sign out and return to landing page"
         >
-          <div className="sidebar-footer__avatar">U</div>
+          <div className="sidebar-footer__avatar">
+            {(storedUser?.name || storedUser?.email || 'Admin')[0].toUpperCase()}
+          </div>
           <div className="sidebar-footer__info">
-            <div className="sidebar-footer__name">User (Admin)</div>
+            <div className="sidebar-footer__name">
+              {storedUser?.name || storedUser?.business_name || 'Alex Vance (Lead)'}
+            </div>
             <div className="sidebar-footer__role" style={{ color: 'var(--color-accent-light)' }}>
-              Sign Out
+              Sign Out →
             </div>
           </div>
         </div>

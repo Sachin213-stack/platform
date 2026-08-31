@@ -12,7 +12,9 @@ import { ThemeProvider } from './shared/context/ThemeContext';
 import { TenantProvider, useTenant } from './shared/context/TenantContext';
 import { AnalyticsProvider } from './shared/context/AnalyticsContext';
 import { OnboardingWizard } from './modules/onboarding/OnboardingWizard';
+import { AuthModal } from './shared/components/AuthModal';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
+import { authApi, getAccessToken } from './shared/services/apiClient';
 
 /* ── Lightweight URL-based routing helpers (no React Router needed) ── */
 const APP_BASE = '/app';
@@ -34,7 +36,7 @@ function navigateTo(path) {
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     try {
-      return localStorage.getItem('aicto_is_logged_in') === 'true';
+      return Boolean(getAccessToken()) || localStorage.getItem('aicto_is_logged_in') === 'true';
     } catch {
       return false;
     }
@@ -43,8 +45,24 @@ function AppContent() {
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
   const [currentNav, setCurrentNav] = useState('dashboard');
   const [navContext, setNavContext] = useState(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState('login');
+
   const { addToast } = useToast();
   const { isOnboardingOpen, openOnboarding, closeOnboarding } = useTenant();
+
+  /* ── Check backend session on mount ── */
+  useEffect(() => {
+    if (getAccessToken()) {
+      authApi.getMe().then((user) => {
+        if (user?.email) {
+          setIsLoggedIn(true);
+        }
+      }).catch(() => {
+        // Token expired or server restarted
+      });
+    }
+  }, []);
 
   /* ── Listen for popstate (back/forward) and our custom pushState events ── */
   useEffect(() => {
@@ -77,27 +95,28 @@ function AppContent() {
     navigateTo(APP_BASE);
   }, []);
 
-  const handleLogin = useCallback((targetNav = 'dashboard') => {
+  const handleOpenAuth = useCallback((tab = 'login') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const handleAuthSuccess = useCallback((authData) => {
     setIsLoggedIn(true);
     try {
       localStorage.setItem('aicto_is_logged_in', 'true');
     } catch {}
-    setCurrentNav(targetNav);
+    setCurrentNav('dashboard');
     setNavContext(null);
     navigateTo(APP_BASE);
-    addToast('Welcome back to AI-CTO Operations Platform', 'success');
+    addToast('Authenticated with AI-CTO Backend API (v2.0.0)', 'success');
   }, [addToast]);
 
   const handleStartFree = useCallback(() => {
-    setIsLoggedIn(true);
-    try {
-      localStorage.setItem('aicto_is_logged_in', 'true');
-    } catch {}
-    navigateTo(APP_BASE);
-    openOnboarding();
-  }, [openOnboarding]);
+    handleOpenAuth('register');
+  }, [handleOpenAuth]);
 
-  const handleSignOut = useCallback(() => {
+  const handleSignOut = useCallback(async () => {
+    await authApi.logout();
     setIsLoggedIn(false);
     try {
       localStorage.setItem('aicto_is_logged_in', 'false');
@@ -134,14 +153,15 @@ function AppContent() {
   const isOnAppRoute = currentPath.startsWith(APP_BASE);
 
   // Show Landing Page: at "/" when not logged in
-  // (If logged in at "/", the useEffect above will redirect to /app)
   if (!isLoggedIn && !isOnAppRoute) {
     return (
       <>
         <LandingPage
-          onLogin={() => handleLogin('dashboard')}
+          onLogin={() => handleOpenAuth('login')}
           onStartFree={handleStartFree}
-          onExploreApp={(targetNav) => handleLogin(targetNav || 'dashboard')}
+          onExploreApp={(targetNav) => {
+            handleOpenAuth('login');
+          }}
         />
 
         {/* Global Multi-Step Onboarding Wizard Modal */}
@@ -151,6 +171,14 @@ function AppContent() {
           onCompleted={() => {
             handleNavigate('dashboard');
           }}
+        />
+
+        {/* Authentication Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialTab={authModalTab}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={handleAuthSuccess}
         />
       </>
     );

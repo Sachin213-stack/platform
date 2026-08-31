@@ -5,6 +5,7 @@ import { LandingHero } from './components/LandingHero';
 import { ProblemSolutionSection } from './components/ProblemSolutionSection';
 import { CoreValuePropsSection } from './components/CoreValuePropsSection';
 import { FeatureGridSection } from './components/FeatureGridSection';
+import { IntegrationStepsSection } from './components/IntegrationStepsSection';
 import { StatBarSection } from './components/StatBarSection';
 import { IntegrationsStripSection } from './components/IntegrationsStripSection';
 import { FinalCtaSection } from './components/FinalCtaSection';
@@ -95,7 +96,16 @@ export default function LandingPage({
           />
         </div>
 
-        {/* 6. Stat Bar */}
+        {/* 6. How to Integrate (3-Step Walkthrough) */}
+        <div className="landing-reveal">
+          <IntegrationStepsSection
+            onStartFree={onStartFree}
+            onBookDemo={() => setIsDemoModalOpen(true)}
+            onExploreApp={onExploreApp}
+          />
+        </div>
+
+        {/* 7. Stat Bar */}
         <div className="landing-reveal">
           <StatBarSection />
         </div>
