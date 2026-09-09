@@ -37,54 +37,21 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
   const [activeSpeakingText, setActiveSpeakingText] = useState('');
 
   // ── Messages & Command History ──────────────────────────────────
-  const [messages, setMessages] = useState(() => {
-    const base = [
-      {
-        id: 'm1',
-        sender: 'friday',
-        time: '18:24',
-        text:
-          activeAnomaliesCount > 0
-            ? `Good evening. I am monitoring all microservice telemetry. Telemetry watch alert: ${activeAnomaliesCount} active anomaly detected (${anomalies[0]?.title || 'Checkout Latency Spike'}). Crash risk is currently ${liveCrashRisk}%. How can I assist you with infrastructure operations?`
-            : 'Good evening. I am monitoring all microservice telemetry, edge TLS handshakes, and autonomous incident mitigations. Zero active anomalies detected. How can I assist you with infrastructure operations?',
-      },
-    ];
+  const [messages, setMessages] = useState(() => [
+    {
+      id: 'm1',
+      sender: 'friday',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text:
+        activeAnomaliesCount > 0
+          ? `Good evening. I am monitoring all microservice telemetry via Kimi (Moonshot AI). Telemetry watch alert: ${activeAnomaliesCount} active anomaly detected (${anomalies[0]?.title || 'Checkout Latency Spike'}). Crash risk is currently ${liveCrashRisk}%. How can I assist you with infrastructure operations?`
+          : 'Good evening. I am monitoring all microservice telemetry, edge TLS handshakes, and autonomous incident mitigations via Kimi (Moonshot AI). Zero active anomalies detected. How can I assist you with infrastructure operations?',
+    },
+  ]);
 
-    if (initialContext?.initialPrompt) {
-      const targetAnomaly = initialContext.context?.anomaly || initialContext.context;
-      let replyText = `Analyzing active incident for ${targetAnomaly?.service || initialContext.context?.service || 'checkout-v2'}:\n\n`;
-
-      if (targetAnomaly?.rootCauses && targetAnomaly.rootCauses.length > 0) {
-        replyText += `1. Root Cause Breakdown:\n${targetAnomaly.rootCauses
-          .map((rc) => `   • ${rc.factor}: ${rc.importance}% attribution (${rc.description})`)
-          .join('\n')}\n\n`;
-      } else {
-        replyText += `1. Root Cause: High Redis session lock contention during checkout p99 spikes.\n`;
-      }
-
-      replyText += `2. Autonomous recommendation: ${
-        targetAnomaly?.aiRecommendation ||
-        targetAnomaly?.recommendedAction ||
-        'Scale checkout-v2 deployment from 4 to 8 replicas and apply memory cache tier.'
-      }\n3. Rollback risk: Negligible (< 0.1%). Zero downtime guaranteed via rolling update.`;
-
-      base.push(
-        {
-          id: 'm-init-user',
-          sender: 'user',
-          time: 'Just now',
-          text: initialContext.initialPrompt,
-        },
-        {
-          id: 'm-init-ai',
-          sender: 'friday',
-          time: 'Just now',
-          text: replyText,
-        }
-      );
-    }
-    return base;
-  });
+  const [isSending, setIsSending] = useState(false);
+  const [executingActionId, setExecutingActionId] = useState(null);
+  const initialContextDispatchedRef = useRef(false);
 
   const [commandHistory, setCommandHistory] = useState(INITIAL_COMMAND_HISTORY);
   const [inputVal, setInputVal] = useState('');
@@ -131,7 +98,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
   };
 
   // Add Message helper
-  const addMessage = useCallback((sender, text) => {
+  const addMessage = useCallback((sender, text, suggestedActions = null) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages((prev) => [
@@ -141,6 +108,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         sender,
         time: timeStr,
         text,
+        suggestedActions,
       },
     ]);
   }, []);
@@ -171,10 +139,10 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
    * onAssistantResponse: Triggered when assistant has response text ready
    * Defined before onMicRelease so it is initialized and available in callbacks
    */
-  const onAssistantResponse = useCallback((text) => {
+  const onAssistantResponse = useCallback((text, suggestedActions = null) => {
     setMicState('speaking');
     setActiveSpeakingText(text);
-    addMessage('friday', text);
+    addMessage('friday', text, suggestedActions);
 
     // Calculate approximate speaking duration
     const words = text.split(' ').length;
@@ -223,16 +191,56 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
   const [conversationId] = useState(() => {
     try {
       const saved = localStorage.getItem('aicto_friday_conv_id');
-      if (saved) return saved;
-      const created = crypto.randomUUID();
+      if (saved && saved !== 'conv-default') return saved;
+      const created = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : '00000000-0000-4000-8000-000000000001';
       localStorage.setItem('aicto_friday_conv_id', created);
       return created;
     } catch {
-      return 'conv-default';
+      return '00000000-0000-4000-8000-000000000001';
     }
   });
 
-  const [activeModel, setActiveModel] = useState('meta/llama-3.1-70b-instruct');
+  const [activeModel, setActiveModel] = useState('kimi-k3');
+
+  // ── Dynamic "Ask FRIDAY about this" Hook from Analytics & Dashboard ──
+  useEffect(() => {
+    if (initialContext?.initialPrompt && !initialContextDispatchedRef.current) {
+      initialContextDispatchedRef.current = true;
+      const prompt = initialContext.initialPrompt;
+      const hints = initialContext.context || null;
+      addMessage('user', prompt);
+      setIsSending(true);
+
+      fridayApi.sendMessage({
+        message: prompt,
+        conversation_id: conversationId,
+        mode: 'chat',
+        model: settings.selectedModel || activeModel,
+        context_hints: hints,
+      })
+      .then((res) => {
+        setIsSending(false);
+        const aiReply = res.response || res.content;
+        if (res.model_used) setActiveModel(res.model_used);
+        if (aiReply) {
+          addMessage('friday', aiReply, res.suggested_actions);
+          addCommandHistoryItem(prompt, aiReply);
+          soundFX.playSuccessChime();
+        }
+      })
+      .catch((err) => {
+        setIsSending(false);
+        console.error('FRIDAY initial context query failed:', err);
+        addMessage(
+          'friday',
+          `⚠️ **FRIDAY Notice**: ${err.message || 'Could not reach Kimi LLM'}. ` +
+          `Please configure \`KIMI_API_KEY\` in \`aicto-backend/.env\` to enable live responses.`
+        );
+      });
+    }
+  }, [initialContext, conversationId, settings.selectedModel, activeModel, addMessage, addCommandHistoryItem]);
 
   /**
    * onMicRelease: Triggered when user finishes speaking
@@ -250,33 +258,29 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     addMessage('user', userText);
 
     try {
-      const startTime = performance.now();
       const res = await fridayApi.sendMessage({
         message: userText,
         conversation_id: conversationId,
         mode: 'voice',
+        model: settings.selectedModel || activeModel,
       });
       const aiReply = res.response || res.content;
       if (res.model_used) setActiveModel(res.model_used);
       if (aiReply) {
-        onAssistantResponse(aiReply);
+        onAssistantResponse(aiReply, res.suggested_actions);
         addCommandHistoryItem(userText, aiReply);
         return;
       }
     } catch (err) {
-      console.warn('Voice API fallback:', err.message);
+      console.error('Voice API call failed:', err);
+      setMicState('idle');
+      addMessage(
+        'friday',
+        `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}. ` +
+        `Please verify \`KIMI_API_KEY\` is configured in \`aicto-backend/.env\`.`
+      );
     }
-
-    // Heuristic processing response fallback
-    const t = setTimeout(() => {
-      const nlResult = processNLQuery(userText);
-      const reply = nlResult?.text || `Analysis complete for "${userText}": All 18 cluster nodes report 0 anomalies. Ingress error budget is at 99.94% nominal.`;
-      onAssistantResponse(reply);
-      addCommandHistoryItem(userText, reply);
-    }, settings.mockLatencyMs || 800);
-
-    simulationTimers.current.push(t);
-  }, [activeTranscription, addMessage, addCommandHistoryItem, settings.mockLatencyMs, processNLQuery, onAssistantResponse, conversationId]);
+  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel]);
 
   /**
    * onCancelVoice: Triggered when user interrupts speech or listening
@@ -347,36 +351,68 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
 
   // Handle Manual Chat Send
   const handleSend = async () => {
-    if (!inputVal.trim()) return;
+    if (!inputVal.trim() || isSending) return;
     const prompt = inputVal;
     setInputVal('');
     addMessage('user', prompt);
+    setIsSending(true);
 
     try {
-      // Call backend FRIDAY AI endpoint
+      // Call backend FRIDAY AI endpoint powered by Kimi
       const response = await fridayApi.sendMessage({
         message: prompt,
         conversation_id: conversationId,
         mode: 'chat',
+        model: settings.selectedModel || activeModel,
       });
+      setIsSending(false);
       const aiReply = response.response || response.content;
       if (response.model_used) setActiveModel(response.model_used);
       if (aiReply) {
-        addMessage('friday', aiReply);
+        addMessage('friday', aiReply, response.suggested_actions);
         addCommandHistoryItem(prompt, aiReply);
+        soundFX.playSuccessChime();
         return;
       }
     } catch (err) {
-      console.warn('Backend FRIDAY endpoint unreachable, using client heuristic engine:', err.message);
+      setIsSending(false);
+      console.error('FRIDAY chat call failed:', err);
+      // FAIL LOUDLY: surface the exact error to the user rather than fake canned simulation
+      addMessage(
+        'friday',
+        `⚠️ **FRIDAY Error**: ${err.message || 'Upstream LLM error'}.\n\n` +
+        `If running locally, please ensure \`KIMI_API_KEY\` is configured in \`aicto-backend/.env\` and the server is running.`
+      );
     }
+  };
 
-    // Fallback heuristic engine if backend is offline
-    setTimeout(() => {
-      const nlResult = processNLQuery(prompt);
-      const aiReply = nlResult?.text || `Analyzing cluster state for "${prompt}": Telemetry stream verified across Kubernetes pods. Error budgets are within nominal limits.`;
-      addMessage('friday', aiReply);
-      addCommandHistoryItem(prompt, aiReply);
-    }, 450);
+  // Handle Confirmed Mitigation Action Execution
+  const handleConfirmAction = async (action) => {
+    setExecutingActionId(action.action_id);
+    soundFX.playMicStart();
+    try {
+      const res = await fridayApi.executeAction({
+        action_type: action.action_type,
+        service: action.service,
+        params: action.params,
+        conversation_id: conversationId,
+      });
+      setExecutingActionId(null);
+      soundFX.playSuccessChime();
+
+      addMessage(
+        'friday',
+        `✅ **Action Executed**: ${res.message}\n\n` +
+        `• **Target Service**: \`${action.service}\`\n` +
+        `• **Mitigation Type**: \`${action.action_type}\`\n` +
+        `• **Audit ID**: \`${res.action_id}\`\n` +
+        `• **Timestamp**: \`${res.executed_at}\`\n\n` +
+        `Telemetry ingestion rate limits and health probes are nominal.`
+      );
+    } catch (err) {
+      setExecutingActionId(null);
+      addMessage('friday', `❌ **Action Failed**: ${err.message || 'Failed to execute mitigation action'}.`);
+    }
   };
 
 
@@ -479,6 +515,9 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
             <h2 className="friday-header__title">
               <span>FRIDAY AI Ops Assistant</span>
               <Badge variant="violet" size="sm" dot>Autonomous Agent Online</Badge>
+              <Badge variant="teal" size="sm" title={`Active LLM Engine: ${activeModel}`}>
+                ⚡ {activeModel.includes('kimi') ? 'Kimi Neural LLM (Moonshot AI)' : (activeModel.split('/')[1] || activeModel)}
+              </Badge>
             </h2>
           </div>
         </div>
@@ -570,7 +609,39 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
                   </div>
 
                   <div className="friday-msg__bubble">
-                    {m.text}
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{m.text}</div>
+
+                    {/* Interactive Action Confirmation Card */}
+                    {m.suggestedActions && m.suggestedActions.length > 0 && (
+                      <div className="friday-action-card">
+                        <div className="friday-action-card__header">
+                          <span className="friday-action-card__tag">⚡ Action Confirmation Required</span>
+                        </div>
+                        {m.suggestedActions.map((act) => (
+                          <div key={act.action_id || act.action_type} className="friday-action-card__body">
+                            <div className="friday-action-card__title">
+                              {(act.action_type || 'mitigate').replace(/_/g, ' ').toUpperCase()} on <code>{act.service}</code>
+                            </div>
+                            <p className="friday-action-card__desc">{act.rationale}</p>
+                            {act.params && Object.keys(act.params).length > 0 && (
+                              <div className="friday-action-card__params">
+                                Parameters: {JSON.stringify(act.params)}
+                              </div>
+                            )}
+                            <div className="friday-action-card__footer">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={executingActionId === act.action_id}
+                                onClick={() => handleConfirmAction(act)}
+                              >
+                                {executingActionId === act.action_id ? 'Executing Mitigation...' : 'Confirm & Execute Action'}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="friday-msg__actions">
                       <button
@@ -604,6 +675,19 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
                 </div>
               );
             })}
+
+            {isSending && (
+              <div className="friday-msg friday-msg--assistant">
+                <div className="friday-msg__meta">
+                  <span style={{ fontWeight: 'bold', color: '#a855f7' }}>FRIDAY AI</span>
+                  <span>•</span>
+                  <span>Synthesizing with Kimi...</span>
+                </div>
+                <div className="friday-msg__bubble" style={{ fontStyle: 'italic', color: 'var(--color-text-tertiary)' }}>
+                  Analyzing live telemetry stream and generating response...
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Voice Mode Stage (When Voice Mode is Active) */}
@@ -620,43 +704,68 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
 
           {/* Chat Mode Input Row (When Chat Mode is Active) */}
           {mode === 'chat' && (
-            <div className="friday-chat-input-row">
-              <input
-                type="text"
-                placeholder="Ask FRIDAY AI about cluster health, query anomalies, or trigger mitigations..."
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                className="friday-chat-input"
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {/* Quick Commands Chips */}
+              <div className="friday-quick-commands-bar">
+                <span className="friday-quick-commands-label">⚡ Directives:</span>
+                {[
+                  'Check cluster latency and health',
+                  "Show today's active anomalies",
+                  'What is current crash risk?',
+                  'Propose capacity scale-out for checkout-v2',
+                ].map((cmd) => (
+                  <button
+                    key={cmd}
+                    type="button"
+                    className="friday-quick-cmd-chip"
+                    onClick={() => {
+                      setInputVal(cmd);
+                    }}
+                  >
+                    {cmd}
+                  </button>
+                ))}
+              </div>
 
-              {/* Quick mic trigger button in chat mode */}
-              <button
-                className={`friday-msg-action-btn`}
-                onClick={() => {
-                  setMode('voice');
-                  onMicPress();
-                }}
-                style={{
-                  padding: 'var(--space-2) var(--space-3)',
-                  background: 'var(--color-bg-secondary)',
-                  border: '1px solid var(--color-border-default)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--color-accent-light)',
-                  height: '38px',
-                }}
-                title="Switch to Voice Mode"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" x2="12" y1="19" y2="22" />
-                </svg>
-              </button>
+              <div className="friday-chat-input-row">
+                <input
+                  type="text"
+                  placeholder="Ask FRIDAY AI about cluster health, query anomalies, or trigger mitigations..."
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  className="friday-chat-input"
+                  disabled={isSending}
+                />
 
-              <Button variant="primary" size="md" onClick={handleSend}>
-                Send Message
-              </Button>
+                {/* Quick mic trigger button in chat mode */}
+                <button
+                  className="friday-msg-action-btn"
+                  onClick={() => {
+                    setMode('voice');
+                    onMicPress();
+                  }}
+                  style={{
+                    padding: 'var(--space-2) var(--space-3)',
+                    background: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border-default)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--color-accent-light)',
+                    height: '38px',
+                  }}
+                  title="Switch to Voice Mode"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" x2="12" y1="19" y2="22" />
+                  </svg>
+                </button>
+
+                <Button variant="primary" size="md" onClick={handleSend} disabled={isSending}>
+                  {isSending ? 'Synthesizing...' : 'Send Message'}
+                </Button>
+              </div>
             </div>
           )}
 

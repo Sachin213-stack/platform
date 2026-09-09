@@ -3,7 +3,7 @@ import { Modal } from '../../../shared/components/Modal';
 import { Button } from '../../../shared/components/Button';
 import { ToggleRow } from '../../../shared/components/ToggleRow';
 import { Badge } from '../../../shared/components/Badge';
-import { AVAILABLE_VOICES, INITIAL_SETTINGS } from './fridayData';
+import { AVAILABLE_VOICES, AVAILABLE_LLM_MODELS, INITIAL_SETTINGS } from './fridayData';
 
 export function FridaySettingsModal({
   isOpen,
@@ -30,8 +30,8 @@ export function FridaySettingsModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="FRIDAY Voice & Synthesis Configuration"
-      subtitle="Configure speech recognition, wake engine, and synthetic neural voice parameters."
+      title="FRIDAY Voice & Intelligence Configuration"
+      subtitle="Configure Moonshot AI Kimi LLM models, neural speech synthesis, and voice parameters."
       maxWidth="580px"
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
@@ -49,6 +49,52 @@ export function FridaySettingsModal({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        {/* Section 0: Kimi (Moonshot AI) LLM Engine */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--color-accent-light)', letterSpacing: '0.05em' }}>
+              Moonshot AI (Kimi) Engine Tiers
+            </h4>
+            <Badge variant="teal" size="sm">Sole LLM Provider</Badge>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-2)' }}>
+            {AVAILABLE_LLM_MODELS.map((m) => {
+              const isSelected = (settings.selectedModel || 'kimi-k3') === m.id;
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => onUpdateSettings({ selectedModel: m.id })}
+                  style={{
+                    padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius-md)',
+                    background: isSelected ? 'var(--color-accent-subtle)' : 'var(--color-bg-tertiary)',
+                    border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border-subtle)'}`,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', color: 'var(--color-text-primary)' }}>
+                        {m.name}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {m.provider}
+                      </span>
+                    </div>
+                    <Badge variant={isSelected ? 'teal' : 'neutral'} size="sm">
+                      {m.badge}
+                    </Badge>
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', lineHeight: '1.3', margin: 0 }}>
+                    {m.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Section 1: Wake Word */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <h4 style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--color-accent-light)', letterSpacing: '0.05em' }}>

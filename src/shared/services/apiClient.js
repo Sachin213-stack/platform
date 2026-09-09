@@ -141,14 +141,109 @@ export const dashboardApi = {
 // FRIDAY AI-CTO Conversational API
 // ==========================================
 export const fridayApi = {
-  async sendMessage({ message, conversation_id = null, mode = 'chat', context_hints = null }) {
+  async sendMessage({ message, conversation_id = null, mode = 'chat', model = null, context_hints = null }) {
     return await request('/friday/chat', {
       method: 'POST',
       body: JSON.stringify({
         message,
         conversation_id,
         mode,
+        model,
         context_hints,
+      }),
+    });
+  },
+
+  async streamMessage({
+    message,
+    conversation_id = null,
+    mode = 'chat',
+    model = null,
+    context_hints = null,
+    onToken,
+    onDone,
+    onError,
+  }) {
+    const token = getAccessToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const url = `${API_BASE}/friday/chat/stream`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message,
+          conversation_id,
+          mode,
+          model,
+          context_hints,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        let errText = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errText = errJson.detail || JSON.stringify(errJson);
+        } catch {
+          errText = await response.text();
+        }
+        throw new Error(errText);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+          const payload = trimmed.slice(5).trim();
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.error) {
+              if (onError) onError(new Error(parsed.error));
+              return;
+            }
+            if (parsed.token && onToken) {
+              onToken(parsed.token, parsed.model);
+            }
+            if (parsed.done && onDone) {
+              onDone(parsed.model);
+            }
+          } catch {
+            // non-JSON SSE chunk
+          }
+        }
+      }
+
+      if (onDone) onDone();
+    } catch (err) {
+      if (onError) onError(err);
+      else throw err;
+    }
+  },
+
+  async executeAction({ action_type, service, params = {}, conversation_id = null }) {
+    return await request('/friday/actions/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        action_type,
+        service,
+        params,
+        conversation_id,
       }),
     });
   },
