@@ -3,7 +3,8 @@
  * Centralized service layer for communicating with the FastAPI Modular Monolith backend.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = RAW_BASE.replace(/\/+$/, '');
 const TOKEN_KEY = 'aicto_access_token';
 const REFRESH_KEY = 'aicto_refresh_token';
 const USER_KEY = 'aicto_auth_user';
