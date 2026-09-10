@@ -14,7 +14,7 @@ import { AnalyticsProvider } from './shared/context/AnalyticsContext';
 import { OnboardingWizard } from './modules/onboarding/OnboardingWizard';
 import { AuthModal } from './shared/components/AuthModal';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
-import { authApi, getAccessToken } from './shared/services/apiClient';
+import { authApi, getAccessToken, clearAuthSession } from './shared/services/apiClient';
 
 /* ── Lightweight URL-based routing helpers (no React Router needed) ── */
 const APP_BASE = '/app';
@@ -36,7 +36,7 @@ function navigateTo(path) {
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     try {
-      return Boolean(getAccessToken()) || localStorage.getItem('aicto_is_logged_in') === 'true';
+      return Boolean(getAccessToken());
     } catch {
       return false;
     }
@@ -53,14 +53,22 @@ function AppContent() {
 
   /* ── Check backend session on mount ── */
   useEffect(() => {
-    if (getAccessToken()) {
+    const token = getAccessToken();
+    if (token) {
       authApi.getMe().then((user) => {
         if (user?.email) {
           setIsLoggedIn(true);
+        } else {
+          clearAuthSession();
+          setIsLoggedIn(false);
         }
       }).catch(() => {
-        // Token expired or server restarted
+        // Stale or expired token
+        clearAuthSession();
+        setIsLoggedIn(false);
       });
+    } else {
+      setIsLoggedIn(false);
     }
   }, []);
 
