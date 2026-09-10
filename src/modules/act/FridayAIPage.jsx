@@ -202,7 +202,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     }
   });
 
-  const [activeModel, setActiveModel] = useState('kimi-k3');
+  const [activeModel, setActiveModel] = useState('moonshotai/kimi-k3');
 
   // ── Dynamic "Ask FRIDAY about this" Hook from Analytics & Dashboard ──
   useEffect(() => {
@@ -235,8 +235,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         console.error('FRIDAY initial context query failed:', err);
         addMessage(
           'friday',
-          `⚠️ **FRIDAY Notice**: ${err.message || 'Could not reach Kimi LLM'}. ` +
-          `Please configure \`KIMI_API_KEY\` in \`aicto-backend/.env\` to enable live responses.`
+          `⚠️ **FRIDAY Notice**: ${err.message || 'Could not reach Kimi LLM'}`
         );
       });
     }
@@ -276,8 +275,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
       setMicState('idle');
       addMessage(
         'friday',
-        `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}. ` +
-        `Please verify \`KIMI_API_KEY\` is configured in \`aicto-backend/.env\`.`
+        `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}`
       );
     }
   }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel]);
@@ -377,11 +375,10 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     } catch (err) {
       setIsSending(false);
       console.error('FRIDAY chat call failed:', err);
-      // FAIL LOUDLY: surface the exact error to the user rather than fake canned simulation
+      // FAIL LOUDLY: surface the exact error to the user cleanly
       addMessage(
         'friday',
-        `⚠️ **FRIDAY Error**: ${err.message || 'Upstream LLM error'}.\n\n` +
-        `If running locally, please ensure \`KIMI_API_KEY\` is configured in \`aicto-backend/.env\` and the server is running.`
+        `⚠️ **FRIDAY Error**: ${err.message || 'Upstream LLM error'}`
       );
     }
   };
