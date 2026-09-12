@@ -36,9 +36,65 @@ export const clearAuthSession = () => {
 };
 
 // ==========================================
+// Token Auto-Refresh Mutex & Helper
+// ==========================================
+let isRefreshing = false;
+let refreshPromise = null;
+
+export async function refreshAccessToken() {
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    clearAuthSession();
+    window.dispatchEvent(new CustomEvent('aicto_auth_expired'));
+    throw new Error('No refresh token available');
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Refresh failed with HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data.access_token) {
+        throw new Error('No access token returned from refresh');
+      }
+
+      // Preserve existing stored user information
+      const currentUser = getStoredUser();
+      setAuthSession(data, currentUser);
+      window.dispatchEvent(new CustomEvent('aicto_token_refreshed', { detail: data }));
+      return data.access_token;
+    } catch (err) {
+      console.warn('Auto-refresh token failed, clearing session:', err.message);
+      clearAuthSession();
+      window.dispatchEvent(new CustomEvent('aicto_auth_expired'));
+      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: null }));
+      throw err;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+// ==========================================
 // Core Fetch Wrapper
 // ==========================================
-async function request(endpoint, options = {}) {
+async function request(endpoint, options = {}, isRetry = false) {
   const token = getAccessToken();
   const headers = {
     'Content-Type': 'application/json',
@@ -54,10 +110,25 @@ async function request(endpoint, options = {}) {
       headers,
     });
 
-    // Handle 401 Unauthorized
-    if (response.status === 401) {
-      console.warn('Session expired or unauthorized request to:', endpoint);
-      // Optional auto-logout or refresh trigger
+    // Handle 401 Unauthorized with single-flight automatic token refresh & retry
+    if (
+      response.status === 401 &&
+      !isRetry &&
+      !endpoint.includes('/auth/login') &&
+      !endpoint.includes('/auth/register') &&
+      !endpoint.includes('/auth/refresh')
+    ) {
+      try {
+        const newAccessToken = await refreshAccessToken();
+        const retryHeaders = {
+          ...headers,
+          Authorization: `Bearer ${newAccessToken}`,
+        };
+        return await request(endpoint, { ...options, headers: retryHeaders }, true);
+      } catch (refreshErr) {
+        console.warn(`Authentication refresh failed for ${endpoint}:`, refreshErr.message);
+        throw new Error('Session expired. Please log in again.');
+      }
     }
 
     if (!response.ok) {
@@ -78,93 +149,16 @@ async function request(endpoint, options = {}) {
     }
     return {};
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error.message);
+    if (!isRetry) {
+      console.error(`API Error [${endpoint}]:`, error.message);
+    }
     throw error;
   }
 }
 
 // ==========================================
-// Auth API Endpoints
 // ==========================================
-export const authApi = {
-  async register({ business_name, email, password, full_name }) {
-    const data = await request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ business_name, email, password, full_name }),
-    });
-    const initialUser = {
-      email,
-      name: full_name || business_name,
-      full_name: full_name || business_name,
-      business_name,
-      business_id: data.business_id,
-      role: 'owner',
-    };
-    setAuthSession(data, initialUser);
-    try {
-      const me = await request('/auth/me', { method: 'GET' });
-      if (me && me.email) {
-        setAuthSession(data, me);
-        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
-      }
-    } catch {
-      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: initialUser }));
-    }
-    return data;
-  },
-
-  async login({ email, password }) {
-    const data = await request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    setAuthSession(data, { email, business_id: data.business_id });
-    try {
-      const me = await request('/auth/me', { method: 'GET' });
-      if (me && me.email) {
-        setAuthSession(data, me);
-        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
-      }
-    } catch {}
-    return data;
-  },
-
-  async demoLogin() {
-    const data = await request('/auth/demo', { method: 'POST' });
-    const demoUser = {
-      email: 'demo.cto@aicto.io',
-      business_id: data.business_id,
-      name: 'Alex Vance (Lead Architect)',
-      business_name: 'Apex Retail Global',
-      role: 'owner',
-    };
-    setAuthSession(data, demoUser);
-    try {
-      const me = await request('/auth/me', { method: 'GET' });
-      if (me && me.email) {
-        setAuthSession(data, me);
-        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
-      }
-    } catch {}
-    return data;
-  },
-
-  async logout() {
-    try {
-      await request('/auth/logout', { method: 'POST' });
-    } finally {
-      clearAuthSession();
-      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: null }));
-    }
-  },
-
-  async getMe() {
-    return await request('/auth/me', { method: 'GET' });
-  },
-};
-
-// ==========================================
-// User & Profile Management API
+// Canonical User & Profile Management API
 // ==========================================
 export const userApi = {
   async getMe() {
@@ -184,18 +178,33 @@ export const userApi = {
   },
 
   async uploadAvatar(file) {
-    const token = getAccessToken();
+    let token = getAccessToken();
     const formData = new FormData();
     formData.append('file', file);
 
     const url = `${API_BASE}/users/me/avatar`;
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: 'POST',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
+
+    if (response.status === 401) {
+      try {
+        token = await refreshAccessToken();
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: formData,
+        });
+      } catch (refreshErr) {
+        throw new Error('Session expired during avatar upload. Please log in again.');
+      }
+    }
 
     if (!response.ok) {
       let errorDetail = `HTTP Error ${response.status}`;
@@ -213,6 +222,86 @@ export const userApi = {
     localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
     window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: updatedUser }));
     return result;
+  },
+};
+
+// ==========================================
+// Auth API Endpoints (Delegates to canonical userApi)
+// ==========================================
+export const authApi = {
+  async register({ business_name, email, password, full_name }) {
+    const data = await request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ business_name, email, password, full_name }),
+    });
+    const initialUser = {
+      email,
+      name: full_name || business_name,
+      full_name: full_name || business_name,
+      business_name,
+      business_id: data.business_id,
+      role: 'owner',
+    };
+    setAuthSession(data, initialUser);
+    try {
+      const me = await userApi.getMe();
+      if (me && me.email) {
+        setAuthSession(data, me);
+        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
+      }
+    } catch {
+      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: initialUser }));
+    }
+    return data;
+  },
+
+  async login({ email, password }) {
+    const data = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    setAuthSession(data, { email, business_id: data.business_id });
+    try {
+      const me = await userApi.getMe();
+      if (me && me.email) {
+        setAuthSession(data, me);
+        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
+      }
+    } catch {}
+    return data;
+  },
+
+  async demoLogin() {
+    const data = await request('/auth/demo', { method: 'POST' });
+    const demoUser = {
+      email: 'demo.cto@aicto.io',
+      business_id: data.business_id,
+      name: 'Alex Vance (Lead Architect)',
+      business_name: 'Apex Retail Global',
+      role: 'owner',
+    };
+    setAuthSession(data, demoUser);
+    try {
+      const me = await userApi.getMe();
+      if (me && me.email) {
+        setAuthSession(data, me);
+        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
+      }
+    } catch {}
+    return data;
+  },
+
+  async logout() {
+    try {
+      await request('/auth/logout', { method: 'POST' });
+    } finally {
+      clearAuthSession();
+      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: null }));
+    }
+  },
+
+  async getMe() {
+    return await userApi.getMe();
   },
 };
 
@@ -252,17 +341,17 @@ export const fridayApi = {
     onDone,
     onError,
   }) {
-    const token = getAccessToken();
-    const headers = {
+    let token = getAccessToken();
+    const getHeaders = (t) => ({
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
+      ...(t ? { Authorization: `Bearer ${t}` } : {}),
+    });
     const url = `${API_BASE}/friday/chat/stream`;
 
     try {
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         method: 'POST',
-        headers,
+        headers: getHeaders(token),
         body: JSON.stringify({
           message,
           conversation_id,
@@ -272,6 +361,27 @@ export const fridayApi = {
           stream: true,
         }),
       });
+
+      if (response.status === 401) {
+        try {
+          token = await refreshAccessToken();
+          response = await fetch(url, {
+            method: 'POST',
+            headers: getHeaders(token),
+            body: JSON.stringify({
+              message,
+              conversation_id,
+              mode,
+              model,
+              context_hints,
+              stream: true,
+            }),
+          });
+        } catch (refreshErr) {
+          if (onError) onError(new Error('Session expired. Please log in again.'));
+          return;
+        }
+      }
 
       if (!response.ok) {
         let errText = `HTTP ${response.status}`;

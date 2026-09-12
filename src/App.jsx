@@ -14,7 +14,7 @@ import { AnalyticsProvider } from './shared/context/AnalyticsContext';
 import { OnboardingWizard } from './modules/onboarding/OnboardingWizard';
 import { AuthModal } from './shared/components/AuthModal';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
-import { authApi, getAccessToken, clearAuthSession } from './shared/services/apiClient';
+import { userApi, getAccessToken, clearAuthSession } from './shared/services/apiClient';
 
 /* ── Lightweight URL-based routing helpers (no React Router needed) ── */
 const APP_BASE = '/app';
@@ -28,20 +28,12 @@ function getCurrentPath() {
 function navigateTo(path) {
   if (window.location.pathname !== path) {
     window.history.pushState(null, '', path);
-    // Dispatch a custom event so React state can react to pushState changes
     window.dispatchEvent(new Event('app-navigate'));
   }
 }
 
-function AppContent() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    try {
-      return Boolean(getAccessToken());
-    } catch {
-      return false;
-    }
-  });
-
+export function AppContent() {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!getAccessToken());
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
   const [currentNav, setCurrentNav] = useState('dashboard');
   const [navContext, setNavContext] = useState(null);
@@ -51,11 +43,11 @@ function AppContent() {
   const { addToast } = useToast();
   const { isOnboardingOpen, openOnboarding, closeOnboarding } = useTenant();
 
-  /* ── Check backend session on mount ── */
+  /* ── Check backend session on mount (canonical /users/me) ── */
   useEffect(() => {
     const token = getAccessToken();
     if (token) {
-      authApi.getMe().then((user) => {
+      userApi.getMe().then((user) => {
         if (user?.email) {
           setIsLoggedIn(true);
         } else {
@@ -71,6 +63,22 @@ function AppContent() {
       setIsLoggedIn(false);
     }
   }, []);
+
+  /* ── Handle session expiry broadcast from apiClient ── */
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setIsLoggedIn(false);
+      setIsAuthModalOpen(true);
+      setAuthModalTab('login');
+      addToast({
+        title: 'Session Expired',
+        message: 'Your session has expired. Please log in again to continue.',
+        variant: 'warning',
+      });
+    };
+    window.addEventListener('aicto_auth_expired', handleAuthExpired);
+    return () => window.removeEventListener('aicto_auth_expired', handleAuthExpired);
+  }, [addToast]);
 
   /* ── Listen for popstate (back/forward) and our custom pushState events ── */
   useEffect(() => {
