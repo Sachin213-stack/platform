@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardBody } from '../../../shared/components/Card';
+import { Card } from '../../../shared/components/Card';
 import { Badge } from '../../../shared/components/Badge';
 import { Button } from '../../../shared/components/Button';
 

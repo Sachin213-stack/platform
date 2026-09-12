@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import './BillingPage.css';
-import { Card } from '../../shared/components/Card';
 import { Badge } from '../../shared/components/Badge';
 import { Button } from '../../shared/components/Button';
 import { ConfirmModal } from '../../shared/components/ConfirmModal';

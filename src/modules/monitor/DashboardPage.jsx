@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './Dashboard.css';
 
 import {
-  BUSINESS_PROFILES,
   INITIAL_ANOMALIES,
   RECENT_TELEMETRY_EVENTS,
   HISTORICAL_DECISION_LOGS,

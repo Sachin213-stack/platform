@@ -14,7 +14,7 @@ import { AnalyticsProvider } from './shared/context/AnalyticsContext';
 import { OnboardingWizard } from './modules/onboarding/OnboardingWizard';
 import { AuthModal } from './shared/components/AuthModal';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
-import { userApi, getAccessToken, clearAuthSession } from './shared/services/apiClient';
+import { authApi, userApi, getAccessToken, clearAuthSession } from './shared/services/apiClient';
 
 /* ── Lightweight URL-based routing helpers (no React Router needed) ── */
 const APP_BASE = '/app';
@@ -41,7 +41,7 @@ export function AppContent() {
   const [authModalTab, setAuthModalTab] = useState('login');
 
   const { addToast } = useToast();
-  const { isOnboardingOpen, openOnboarding, closeOnboarding } = useTenant();
+  const { isOnboardingOpen, closeOnboarding } = useTenant();
 
   /* ── Check backend session on mount (canonical /users/me) ── */
   useEffect(() => {

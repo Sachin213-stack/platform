@@ -124,10 +124,10 @@ const NAV_SECTIONS = [
  */
 export default function AppShell({
   sidebar,
-  topbar,
+  topbar: _topbar,
   children,
   activeNav = 'dashboard',
-  pageTitle = 'Dashboard',
+  pageTitle: _pageTitle = 'Dashboard',
   onNavChange,
   onSignOut,
 }) {
@@ -142,8 +142,8 @@ export default function AppShell({
   const handleNavClick = useCallback(
     (id) => {
       setCurrentNav(id);
-      closeSidebar(); // close mobile sidebar on nav
       if (onNavChange) onNavChange(id);
+      closeSidebar();
     },
     [onNavChange, closeSidebar]
   );
@@ -162,12 +162,6 @@ export default function AppShell({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [toggleCollapse, sidebarOpen, closeSidebar]);
-
-  /* ── Derive page title from currentNav if not provided ───── */
-  const derivedTitle =
-    pageTitle !== 'Dashboard' || currentNav === 'dashboard'
-      ? pageTitle
-      : NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.id === currentNav)?.label || 'Dashboard';
 
   const sidebarClasses = [
     'app-shell__sidebar',
@@ -405,70 +399,6 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
         </div>
       </div>
     </>
-  );
-}
-
-function DefaultTopbar() {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [storedUser, setStoredUser] = useState(() => getStoredUser());
-
-  useEffect(() => {
-    const handleUserUpdate = (e) => {
-      if (e.detail) {
-        setStoredUser(e.detail);
-      }
-    };
-    window.addEventListener('aicto_user_updated', handleUserUpdate);
-    return () => window.removeEventListener('aicto_user_updated', handleUserUpdate);
-  }, []);
-
-  return (
-    <div className="topbar-inner">
-      <div className="topbar-right">
-        {/* Search toggle */}
-        <button
-          className="topbar-icon-btn"
-          aria-label="Search"
-          onClick={() => setSearchOpen(!searchOpen)}
-          title="Search"
-        >
-          {Icons.search}
-        </button>
-
-        {/* Notifications */}
-        <button className="topbar-icon-btn" aria-label="Notifications" title="Notifications">
-          {Icons.bell}
-          <span className="topbar-icon-btn__badge" />
-        </button>
-
-        {/* Alerts */}
-        <button className="topbar-icon-btn" aria-label="Alerts" title="Alerts">
-          {Icons.alerts}
-        </button>
-
-        {/* User avatar */}
-        <div
-          className="topbar-avatar"
-          role="button"
-          tabIndex={0}
-          aria-label="Account menu"
-          style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          {storedUser?.avatar_url ? (
-            <img
-              src={storedUser.avatar_url}
-              alt={storedUser?.name || 'User'}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            (storedUser?.name || storedUser?.full_name || storedUser?.email || 'U')[0].toUpperCase()
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
