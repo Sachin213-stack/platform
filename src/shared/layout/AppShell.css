@@ -304,6 +304,7 @@
   font-weight: var(--weight-semibold);
   color: var(--color-text-sidebar-active);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 [data-theme="light"] .sidebar-footer__avatar {

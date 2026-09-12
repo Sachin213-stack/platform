@@ -92,7 +92,24 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ business_name, email, password, full_name }),
     });
-    setAuthSession(data, { email, business_id: data.business_id });
+    const initialUser = {
+      email,
+      name: full_name || business_name,
+      full_name: full_name || business_name,
+      business_name,
+      business_id: data.business_id,
+      role: 'owner',
+    };
+    setAuthSession(data, initialUser);
+    try {
+      const me = await request('/auth/me', { method: 'GET' });
+      if (me && me.email) {
+        setAuthSession(data, me);
+        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
+      }
+    } catch {
+      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: initialUser }));
+    }
     return data;
   },
 
@@ -102,17 +119,33 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     });
     setAuthSession(data, { email, business_id: data.business_id });
+    try {
+      const me = await request('/auth/me', { method: 'GET' });
+      if (me && me.email) {
+        setAuthSession(data, me);
+        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
+      }
+    } catch {}
     return data;
   },
 
   async demoLogin() {
     const data = await request('/auth/demo', { method: 'POST' });
-    setAuthSession(data, {
+    const demoUser = {
       email: 'demo.cto@aicto.io',
       business_id: data.business_id,
       name: 'Alex Vance (Lead Architect)',
       business_name: 'Apex Retail Global',
-    });
+      role: 'owner',
+    };
+    setAuthSession(data, demoUser);
+    try {
+      const me = await request('/auth/me', { method: 'GET' });
+      if (me && me.email) {
+        setAuthSession(data, me);
+        window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: me }));
+      }
+    } catch {}
     return data;
   },
 
@@ -121,11 +154,65 @@ export const authApi = {
       await request('/auth/logout', { method: 'POST' });
     } finally {
       clearAuthSession();
+      window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: null }));
     }
   },
 
   async getMe() {
     return await request('/auth/me', { method: 'GET' });
+  },
+};
+
+// ==========================================
+// User & Profile Management API
+// ==========================================
+export const userApi = {
+  async getMe() {
+    return await request('/users/me', { method: 'GET' });
+  },
+
+  async updateMe(updateData) {
+    const data = await request('/users/me', {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+    const current = getStoredUser() || {};
+    const merged = { ...current, ...data };
+    localStorage.setItem(USER_KEY, JSON.stringify(merged));
+    window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: merged }));
+    return data;
+  },
+
+  async uploadAvatar(file) {
+    const token = getAccessToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${API_BASE}/users/me/avatar`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorDetail = `HTTP Error ${response.status}`;
+      try {
+        const errorJson = await response.json();
+        errorDetail = errorJson.detail || JSON.stringify(errorJson);
+      } catch {
+        errorDetail = await response.text();
+      }
+      throw new Error(errorDetail);
+    }
+
+    const result = await response.json();
+    const updatedUser = await userApi.getMe();
+    localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+    window.dispatchEvent(new CustomEvent('aicto_user_updated', { detail: updatedUser }));
+    return result;
   },
 };
 
@@ -276,6 +363,7 @@ export const healthApi = {
 
 export default {
   auth: authApi,
+  user: userApi,
   dashboard: dashboardApi,
   friday: fridayApi,
   ingestion: ingestionApi,

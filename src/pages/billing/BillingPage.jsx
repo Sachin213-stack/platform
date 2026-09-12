@@ -29,7 +29,7 @@ const INITIAL_CARDS = [
     last4: '4242',
     expMonth: '12',
     expYear: '2028',
-    holderName: 'Alex Vance',
+    holderName: 'Primary Cardholder',
     isPrimary: true,
   },
   {

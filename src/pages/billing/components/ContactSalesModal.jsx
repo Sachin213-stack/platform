@@ -2,17 +2,22 @@ import React, { useState } from 'react';
 import { Modal } from '../../../shared/components/Modal';
 import { Button } from '../../../shared/components/Button';
 
+import { getStoredUser } from '../../../shared/services/apiClient';
+
 export function ContactSalesModal({
   isOpen,
   onClose,
   onSubmitInquiry,
 }) {
-  const [formData, setFormData] = useState({
-    name: 'Alex Vance',
-    email: 'alex.vance@apexretail.io',
-    company: 'Apex Retail Labs Inc.',
-    teamSize: '50-200 engineers',
-    customMessage: 'We are looking for dedicated FRIDAY AI agent concurrency and custom on-prem / VPC telemetry ingest pipelines.',
+  const [formData, setFormData] = useState(() => {
+    const user = getStoredUser();
+    return {
+      name: user?.name || user?.full_name || '',
+      email: user?.email || '',
+      company: user?.business_name || '',
+      teamSize: '50-200 engineers',
+      customMessage: 'We are looking for dedicated FRIDAY AI agent concurrency and custom on-prem / VPC telemetry ingest pipelines.',
+    };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 

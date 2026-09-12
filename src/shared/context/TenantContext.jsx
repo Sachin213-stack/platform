@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BUSINESS_PROFILES } from '../../modules/monitor/dashboardData';
+import { getStoredUser } from '../services/apiClient';
 
 const TENANTS_STORAGE_KEY = 'aicto_business_tenants';
 const ACTIVE_TENANT_STORAGE_KEY = 'aicto_active_tenant_id';
@@ -11,6 +12,19 @@ export function TenantProvider({ children }) {
   // Initialize businesses from localStorage or fallback to default BUSINESS_PROFILES
   const [businesses, setBusinesses] = useState(() => {
     try {
+      const stored = getStoredUser();
+      if (stored && stored.business_id) {
+        const userBiz = {
+          id: String(stored.business_id),
+          name: stored.business_name || 'My Organization',
+          type: stored.business_type || 'ecommerce',
+          typeLabel: (stored.business_type || 'ecommerce').toUpperCase(),
+          tierLabel: 'Production',
+          region: 'us-east-1',
+          ops_email: stored.ops_email,
+        };
+        return [userBiz];
+      }
       const saved = localStorage.getItem(TENANTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -24,9 +38,13 @@ export function TenantProvider({ children }) {
     return BUSINESS_PROFILES;
   });
 
-  // Initialize selectedBusinessId from localStorage or first business
+  // Initialize selectedBusinessId from stored user or localStorage
   const [selectedBusinessId, setSelectedBusinessId] = useState(() => {
     try {
+      const stored = getStoredUser();
+      if (stored && stored.business_id) {
+        return String(stored.business_id);
+      }
       const savedId = localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
       if (savedId) return savedId;
     } catch (e) {
@@ -115,6 +133,61 @@ export function TenantProvider({ children }) {
     }
   };
 
+  // Update active business data in memory
+  const updateSelectedBusiness = (updates) => {
+    setBusinesses((prev) =>
+      prev.map((b) => (b.id === selectedBusinessId ? { ...b, ...updates } : b))
+    );
+  };
+
+  // Synchronize with logged-in user changes
+  useEffect(() => {
+    const handleUserUpdate = (e) => {
+      const user = e.detail;
+      if (user && user.business_id) {
+        const bizId = String(user.business_id);
+        const bizName = user.business_name || `${user.name || 'User'}'s Org`;
+        const bizType = user.business_type || 'ecommerce';
+        setBusinesses((prev) => {
+          const exists = prev.find((b) => b.id === bizId);
+          if (exists) {
+            return prev.map((b) =>
+              b.id === bizId
+                ? {
+                    ...b,
+                    name: bizName,
+                    type: bizType,
+                    typeLabel: bizType.toUpperCase(),
+                    ops_email: user.ops_email,
+                  }
+                : b
+            );
+          }
+          return [
+            {
+              id: bizId,
+              name: bizName,
+              type: bizType,
+              typeLabel: bizType.toUpperCase(),
+              tierLabel: 'Production',
+              region: 'us-east-1',
+              ops_email: user.ops_email,
+            },
+            ...prev,
+          ];
+        });
+        setSelectedBusinessId(bizId);
+      }
+    };
+
+    window.addEventListener('aicto_user_updated', handleUserUpdate);
+    const stored = getStoredUser();
+    if (stored) {
+      handleUserUpdate({ detail: stored });
+    }
+    return () => window.removeEventListener('aicto_user_updated', handleUserUpdate);
+  }, []);
+
   return (
     <TenantContext.Provider
       value={{
@@ -122,6 +195,7 @@ export function TenantProvider({ children }) {
         selectedBusiness,
         selectedBusinessId,
         setSelectedBusiness: switchBusiness,
+        updateSelectedBusiness,
         addBusiness,
         isOnboardingOpen,
         onboardingInitialData,

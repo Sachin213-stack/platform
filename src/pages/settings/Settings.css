@@ -918,3 +918,8 @@
   border-color: var(--color-accent-border);
   color: var(--color-accent);
 }
+
+/* ── Profile Avatar Upload ── */
+.profile-avatar-container:hover .avatar-hover-overlay {
+  opacity: 1 !important;
+}

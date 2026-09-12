@@ -149,7 +149,7 @@ export function AuthModal({
                   <label className="auth-label">Full Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Alex Vance"
+                    placeholder="e.g. Jane Doe"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="auth-input"

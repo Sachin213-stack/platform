@@ -1,42 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardBody, CardFooter } from '../../../shared/components/Card';
 import { Button } from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/Toast';
 import { useTenant } from '../../../shared/context/TenantContext';
+import { userApi, getStoredUser } from '../../../shared/services/apiClient';
 
 export function GeneralTab() {
   const { addToast } = useToast();
-  const { selectedBusiness, openOnboarding } = useTenant();
+  const { selectedBusiness, updateSelectedBusiness, openOnboarding } = useTenant();
+  const fileInputRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    businessName: selectedBusiness?.name || 'Acme Global Commerce',
-    businessId: selectedBusiness?.id || 'biz_live_948a291cf673e04',
-    businessType: selectedBusiness?.type || 'ecommerce',
-    timezone: selectedBusiness?.timezone || 'America/New_York',
-    autoRefreshInterval: '30s',
-    currency: 'USD',
-    supportEmail: 'cto-ops@acmeglobal.com',
+  const [formData, setFormData] = useState(() => {
+    const stored = getStoredUser() || {};
+    return {
+      fullName: stored.name || stored.full_name || '',
+      email: stored.email || '',
+      avatarUrl: stored.avatar_url || null,
+      businessName: stored.business_name || selectedBusiness?.name || '',
+      businessId: stored.business_id ? String(stored.business_id) : (selectedBusiness?.id || ''),
+      businessType: stored.business_type || selectedBusiness?.type || 'ecommerce',
+      timezone: stored.timezone || selectedBusiness?.timezone || 'America/New_York',
+      autoRefreshInterval: stored.auto_refresh_interval || '30s',
+      currency: stored.currency || 'USD',
+      supportEmail: stored.ops_email || stored.email || '',
+    };
   });
 
   const [savedData, setSavedData] = useState(formData);
   const [saving, setSaving] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
+  // Avatar upload state
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Fetch real current user & org profile from backend
   useEffect(() => {
-    if (selectedBusiness) {
-      const updated = {
-        businessName: selectedBusiness.name || '',
-        businessId: selectedBusiness.id || '',
-        businessType: selectedBusiness.type || 'ecommerce',
-        timezone: selectedBusiness.timezone || 'America/New_York',
-        autoRefreshInterval: '30s',
-        currency: 'USD',
-        supportEmail: 'cto-ops@acmeglobal.com',
-      };
-      setFormData(updated);
-      setSavedData(updated);
-    }
-  }, [selectedBusiness]);
+    userApi.getMe().then((user) => {
+      if (user && user.email) {
+        const loaded = {
+          fullName: user.name || user.full_name || '',
+          email: user.email || '',
+          avatarUrl: user.avatar_url ? `${user.avatar_url}?t=${Date.now()}` : null,
+          businessName: user.business_name || '',
+          businessId: user.business_id ? String(user.business_id) : '',
+          businessType: user.business_type || 'ecommerce',
+          timezone: user.timezone || 'America/New_York',
+          autoRefreshInterval: user.auto_refresh_interval || '30s',
+          currency: user.currency || 'USD',
+          supportEmail: user.ops_email || user.email || '',
+        };
+        setFormData(loaded);
+        setSavedData(loaded);
+      }
+    }).catch(() => {});
+  }, []);
 
   const isDirty = JSON.stringify(formData) !== JSON.stringify(savedData);
 
@@ -45,25 +64,96 @@ export function GeneralTab() {
   };
 
   const handleCopyId = () => {
+    if (!formData.businessId) return;
     navigator.clipboard.writeText(formData.businessId);
     setCopiedId(true);
     addToast('Business ID copied to clipboard', 'info');
     setTimeout(() => setCopiedId(false), 2000);
   };
 
-  const handleSave = () => {
+  // Avatar file selection & validation
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      addToast('Only JPEG, PNG, and WebP images are supported', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('Avatar image file size must be less than 2MB', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+  };
+
+  // Avatar upload action
+  const handleUploadAvatar = async () => {
+    if (!selectedFile) return;
+    setUploadingAvatar(true);
+    try {
+      const res = await userApi.uploadAvatar(selectedFile);
+      addToast(res.message || 'Avatar uploaded successfully', 'success');
+      setSelectedFile(null);
+      if (res.avatar_url) {
+        const freshUrl = `${res.avatar_url}?t=${Date.now()}`;
+        setFormData((prev) => ({ ...prev, avatarUrl: freshUrl }));
+        setSavedData((prev) => ({ ...prev, avatarUrl: freshUrl }));
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to upload avatar', 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // Save changes to backend
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
+    try {
+      await userApi.updateMe({
+        name: formData.fullName,
+        full_name: formData.fullName,
+        business_name: formData.businessName,
+        business_type: formData.businessType,
+        ops_email: formData.supportEmail,
+        timezone: formData.timezone,
+        currency: formData.currency,
+        auto_refresh_interval: formData.autoRefreshInterval,
+      });
+
+      if (updateSelectedBusiness) {
+        updateSelectedBusiness({
+          name: formData.businessName,
+          type: formData.businessType,
+          ops_email: formData.supportEmail,
+        });
+      }
+
       setSavedData(formData);
-      setSaving(false);
       addToast('General settings saved successfully', 'success');
-    }, 600);
+    } catch (err) {
+      addToast(err.message || 'Failed to save settings', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDiscard = () => {
     setFormData(savedData);
+    setSelectedFile(null);
+    setAvatarPreview(null);
     addToast('Unsaved changes discarded', 'info');
   };
+
+  const initials = (formData.fullName || formData.email || 'U')[0]?.toUpperCase() || 'U';
 
   return (
     <div className="settings-tab-pane">
@@ -71,7 +161,7 @@ export function GeneralTab() {
         <div>
           <h2 className="settings-tab-pane__title">General Settings</h2>
           <p className="settings-tab-pane__subtitle">
-            Manage your organization profile, default timezone, live data refresh cadence, and base currency.
+            Manage your user identity, organization profile, default timezone, and operational preferences.
           </p>
         </div>
         <Button
@@ -90,6 +180,159 @@ export function GeneralTab() {
       </div>
 
       <div className="settings-form-grid">
+        {/* User Profile & Avatar */}
+        <Card>
+          <CardHeader
+            title="Profile & Avatar"
+            subtitle="Your personal avatar and display name across workspaces."
+          />
+          <CardBody>
+            <div className="settings-fields-stack">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '8px' }}>
+                <div
+                  className="profile-avatar-container"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: '76px',
+                    height: '76px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    fontSize: '1.75rem',
+                    fontWeight: '700',
+                    border: '2px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+                    flexShrink: 0,
+                  }}
+                  title="Click to choose avatar photo"
+                >
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Preview"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : formData.avatarUrl ? (
+                    <img
+                      src={formData.avatarUrl}
+                      alt={formData.fullName || 'Avatar'}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={() => setFormData((prev) => ({ ...prev, avatarUrl: null }))}
+                    />
+                  ) : (
+                    initials
+                  )}
+                  <div
+                    className="avatar-hover-overlay"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(15, 23, 42, 0.65)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                      gap: '2px',
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    <span style={{ fontSize: '0.62rem', color: '#fff', fontWeight: 600 }}>CHANGE</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      style={{ display: 'none' }}
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleFileSelect}
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Choose Photo
+                    </Button>
+                    {selectedFile && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleUploadAvatar}
+                        loading={uploadingAvatar}
+                      >
+                        Save Photo
+                      </Button>
+                    )}
+                    {selectedFile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setAvatarPreview(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                  <span className="settings-field__hint">
+                    Supported formats: JPEG, PNG, WebP. Maximum file size: 2MB. Saved securely in PostgreSQL.
+                  </span>
+                </div>
+              </div>
+
+              <div className="settings-field-row">
+                <div className="settings-field">
+                  <label className="settings-field__label" htmlFor="user-full-name">
+                    Full Name
+                  </label>
+                  <input
+                    id="user-full-name"
+                    type="text"
+                    value={formData.fullName}
+                    onChange={(e) => handleChange('fullName', e.target.value)}
+                    placeholder="e.g. Test User One"
+                  />
+                  <span className="settings-field__hint">
+                    Your real name rendered in navigation and audit logs.
+                  </span>
+                </div>
+
+                <div className="settings-field">
+                  <label className="settings-field__label" htmlFor="user-account-email">
+                    Account Email (Read-only)
+                  </label>
+                  <input
+                    id="user-account-email"
+                    type="email"
+                    value={formData.email}
+                    readOnly
+                    className="settings-input--mono"
+                  />
+                  <span className="settings-field__hint">
+                    Primary login identity tied to your tenant account.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
         {/* Business Identity */}
         <Card>
           <CardHeader
@@ -107,7 +350,7 @@ export function GeneralTab() {
                   type="text"
                   value={formData.businessName}
                   onChange={(e) => handleChange('businessName', e.target.value)}
-                  placeholder="e.g. Acme Global"
+                  placeholder="e.g. Acme Innovations"
                 />
                 <span className="settings-field__hint">
                   The display name shown across all CTO intelligence dashboards and executive reports.
@@ -131,7 +374,7 @@ export function GeneralTab() {
                   </Button>
                 </div>
                 <span className="settings-field__hint">
-                  Unique immutable tenant identifier used for API requests and webhook payloads.
+                  Unique immutable tenant identifier used for API requests and telemetry ingestion.
                 </span>
               </div>
 
@@ -162,6 +405,7 @@ export function GeneralTab() {
                     type="email"
                     value={formData.supportEmail}
                     onChange={(e) => handleChange('supportEmail', e.target.value)}
+                    placeholder="cto-ops@yourdomain.com"
                   />
                 </div>
               </div>

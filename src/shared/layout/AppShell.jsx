@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import './AppShell.css';
 import { useAnalytics } from '../context/AnalyticsContext';
-import { getStoredUser, healthApi } from '../services/apiClient';
+import { getStoredUser, healthApi, userApi } from '../services/apiClient';
 
 /* ── SVG Icons (inline, no external deps) ───────────────────── */
 const Icons = {
@@ -241,6 +241,22 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
   const [storedUser, setStoredUser] = useState(() => getStoredUser());
 
   useEffect(() => {
+    userApi.getMe().then((user) => {
+      if (user && user.email) {
+        setStoredUser(user);
+      }
+    }).catch(() => {});
+
+    const handleUserUpdate = (e) => {
+      if (e.detail) {
+        setStoredUser(e.detail);
+      }
+    };
+    window.addEventListener('aicto_user_updated', handleUserUpdate);
+    return () => window.removeEventListener('aicto_user_updated', handleUserUpdate);
+  }, []);
+
+  useEffect(() => {
     const checkStatus = () => {
       healthApi.checkHealth().then((res) => {
         if (res && res.status) {
@@ -365,14 +381,25 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
           title="Sign out and return to landing page"
         >
           <div className="sidebar-footer__avatar">
-            {(storedUser?.name || storedUser?.email || 'Admin')[0].toUpperCase()}
+            {storedUser?.avatar_url ? (
+              <img
+                src={storedUser.avatar_url}
+                alt={storedUser?.name || 'User'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              (storedUser?.name || storedUser?.full_name || storedUser?.email || 'U')[0].toUpperCase()
+            )}
           </div>
           <div className="sidebar-footer__info">
             <div className="sidebar-footer__name">
-              {storedUser?.name || storedUser?.business_name || 'Alex Vance (Lead)'}
+              {storedUser?.name || storedUser?.full_name || 'User'}
             </div>
             <div className="sidebar-footer__role" style={{ color: 'var(--color-accent-light)' }}>
-              Sign Out →
+              {storedUser?.role ? storedUser.role.charAt(0).toUpperCase() + storedUser.role.slice(1) : 'Member'} • Sign Out
             </div>
           </div>
         </div>
@@ -383,6 +410,17 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
 
 function DefaultTopbar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [storedUser, setStoredUser] = useState(() => getStoredUser());
+
+  useEffect(() => {
+    const handleUserUpdate = (e) => {
+      if (e.detail) {
+        setStoredUser(e.detail);
+      }
+    };
+    window.addEventListener('aicto_user_updated', handleUserUpdate);
+    return () => window.removeEventListener('aicto_user_updated', handleUserUpdate);
+  }, []);
 
   return (
     <div className="topbar-inner">
@@ -414,8 +452,20 @@ function DefaultTopbar() {
           role="button"
           tabIndex={0}
           aria-label="Account menu"
+          style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          U
+          {storedUser?.avatar_url ? (
+            <img
+              src={storedUser.avatar_url}
+              alt={storedUser?.name || 'User'}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            (storedUser?.name || storedUser?.full_name || storedUser?.email || 'U')[0].toUpperCase()
+          )}
         </div>
       </div>
     </div>
