@@ -40,6 +40,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const [telemetryEvents, setTelemetryEvents] = useState(RECENT_TELEMETRY_EVENTS);
   const [decisionLogs, setDecisionLogs] = useState(HISTORICAL_DECISION_LOGS);
   const [activityFeed] = useState(RECENT_ACTIVITY_FEED);
+  const [liveKpis, setLiveKpis] = useState(null);
 
   // Cluster vitals
   const [cpuUsage, setCpuUsage] = useState(48);
@@ -49,6 +50,77 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   // Loading & Error states
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  // ── Compute Dynamic KPI Overrides from Live Backend Data ──────────
+  const kpiOverrides = useMemo(() => {
+    if (!liveKpis) return null;
+    const isWeek = comparisonPeriod === 'week';
+    return [
+      {
+        id: 'response-time',
+        label: 'Avg Response Time',
+        value: `${liveKpis.response_time_ms}ms`,
+        rawValue: liveKpis.response_time_ms,
+        threshold: { warn: 200, crit: 350 },
+        unit: 'ms',
+        delta: isWeek ? '-6.8%' : `${liveKpis.response_time_delta_pct > 0 ? '+' : ''}${liveKpis.response_time_delta_pct}%`,
+        deltaType: liveKpis.response_time_delta_pct <= 0 ? 'positive' : 'negative',
+        sparkline: [
+          Math.round(liveKpis.response_time_ms * 1.12),
+          Math.round(liveKpis.response_time_ms * 1.08),
+          Math.round(liveKpis.response_time_ms * 1.03),
+          Math.round(liveKpis.response_time_ms * 0.98),
+          Math.round(liveKpis.response_time_ms),
+        ],
+        target: 'SLA < 200ms',
+      },
+      {
+        id: 'requests-min',
+        label: 'Throughput / Orders',
+        value: `${liveKpis.orders_per_min}/min`,
+        rawValue: liveKpis.orders_per_min,
+        threshold: { warn: 500, crit: 1000 },
+        unit: 'opm',
+        delta: isWeek ? '+15.2%' : `${liveKpis.orders_delta_pct > 0 ? '+' : ''}${liveKpis.orders_delta_pct}%`,
+        deltaType: 'positive',
+        sparkline: [
+          Math.round(liveKpis.orders_per_min * 0.82),
+          Math.round(liveKpis.orders_per_min * 0.90),
+          Math.round(liveKpis.orders_per_min * 0.95),
+          Math.round(liveKpis.orders_per_min),
+        ],
+        target: 'Scale cap: 50k',
+      },
+      {
+        id: 'error-rate',
+        label: 'HTTP Error Rate',
+        value: `${liveKpis.error_rate_pct}%`,
+        rawValue: liveKpis.error_rate_pct,
+        threshold: { warn: 1.0, crit: 2.5 },
+        unit: '%',
+        delta: isWeek ? '-0.05%' : `${liveKpis.error_rate_delta_pct > 0 ? '+' : ''}${liveKpis.error_rate_delta_pct}%`,
+        deltaType: liveKpis.error_rate_pct < 1.0 ? 'positive' : 'negative',
+        sparkline: [
+          Number((liveKpis.error_rate_pct * 1.25).toFixed(2)),
+          Number((liveKpis.error_rate_pct * 1.10).toFixed(2)),
+          Number((liveKpis.error_rate_pct).toFixed(2)),
+        ],
+        target: '< 1.0% healthy',
+      },
+      {
+        id: 'checkout-failure',
+        label: 'Checkout Failure Rate',
+        value: `${liveKpis.checkout_failure_pct}%`,
+        rawValue: liveKpis.checkout_failure_pct,
+        threshold: { warn: 0.5, crit: 1.5 },
+        unit: '%',
+        delta: `${liveKpis.checkout_failure_delta_pct > 0 ? '+' : ''}${liveKpis.checkout_failure_delta_pct}%`,
+        deltaType: 'positive',
+        sparkline: [0.03, 0.02, 0.01, liveKpis.checkout_failure_pct],
+        target: '< 0.5% SLA',
+      },
+    ];
+  }, [liveKpis, comparisonPeriod]);
 
   // ── Compute Health Score dynamically ───────────────────────────
   const healthScore = useMemo(() => {
@@ -81,27 +153,71 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
     try {
       // Call backend metrics endpoint
       const metricsData = await dashboardApi.getMetrics();
-      if (metricsData && metricsData.capacity) {
-        if (metricsData.capacity.cpu_pct !== undefined) setCpuUsage(Math.round(metricsData.capacity.cpu_pct));
-        if (metricsData.capacity.memory_pct !== undefined) setMemUsage(Math.round(metricsData.capacity.memory_pct));
-        if (metricsData.capacity.queue_depth !== undefined) setQueueDepth(metricsData.capacity.queue_depth);
+      if (metricsData) {
+        if (metricsData.kpis) {
+          setLiveKpis(metricsData.kpis);
+        }
+
+        if (metricsData.capacity) {
+          if (metricsData.capacity.cpu_pct !== undefined) setCpuUsage(Math.round(metricsData.capacity.cpu_pct));
+          if (metricsData.capacity.memory_pct !== undefined) setMemUsage(Math.round(metricsData.capacity.memory_pct));
+          if (metricsData.capacity.queue_depth !== undefined) setQueueDepth(metricsData.capacity.queue_depth);
+        }
+
+        // Live MLWorker anomalies from PostgreSQL
+        if (metricsData.recent_anomalies && metricsData.recent_anomalies.length > 0) {
+          const mappedAnomalies = metricsData.recent_anomalies.map((a) => {
+            const sevCap = a.severity ? (a.severity.charAt(0).toUpperCase() + a.severity.slice(1).toLowerCase()) : 'Medium';
+            const deviationPct = a.expected_value > 0
+              ? `${Math.round(((a.actual_value - a.expected_value) / a.expected_value) * 100)}%`
+              : '+100%';
+            const timeStr = a.detected_at
+              ? new Date(a.detected_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              : 'Just now';
+
+            let serviceName = a.metric_name || 'core-service';
+            if (a.description && a.description.includes('endpoint ')) {
+              const match = a.description.match(/endpoint\s+([^\s,]+)/);
+              if (match) serviceName = match[1];
+            }
+
+            let recAction = 'Scale Deployment Replicas';
+            if (a.metric_name.includes('memory')) {
+              recAction = 'Recycle Workers & Flush Cache';
+            } else if (a.metric_name.includes('response_time') || a.metric_name.includes('latency')) {
+              recAction = 'Scale Pods & Optimize Pool';
+            }
+
+            return {
+              id: a.id,
+              service: serviceName,
+              title: `${a.metric_name.replace('_', ' ').toUpperCase()} Anomaly`,
+              severity: sevCap,
+              deviation: `${deviationPct.startsWith('-') ? '' : '+'}${deviationPct} vs baseline`,
+              timestamp: timeStr,
+              impact: `${a.metric_name}: ${a.actual_value} (expected ${a.expected_value})`,
+              aiRecommendation: a.description || `MLWorker IsolationForest detected outlier on ${serviceName}.`,
+              recommendedAction: recAction,
+              confidence: '98.5%',
+            };
+          });
+          setAnomalies(mappedAnomalies);
+        }
+
+        // Live telemetry events from TimescaleDB
+        if (metricsData.recent_telemetry_events && metricsData.recent_telemetry_events.length > 0) {
+          const mappedTelems = metricsData.recent_telemetry_events.map((t) => ({
+            id: t.id,
+            time: new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            type: t.event_type || 'REQUEST',
+            level: t.level || 'info',
+            message: t.message || (t.endpoint ? `HTTP ${t.status_code} on ${t.endpoint}` : 'Telemetry event recorded'),
+            latency: `${Math.round(t.response_time_ms || 0)}ms`,
+          }));
+          setTelemetryEvents(mappedTelems);
+        }
       }
 
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0];
-      const isCacheHit = metricsData?.cache_hit;
-      const newProbe = {
-        id: `tel-${Date.now()}`,
-        time: timeStr,
-        type: 'HEARTBEAT',
-        level: 'info',
-        message: isCacheHit
-          ? `Redis cache hit (TTL 15s) for ${selectedBusiness.domain} [p95: ${metricsData?.kpis?.response_time_ms || 184}ms]`
-          : `FastAPI telemetry stream verified for ${selectedBusiness.domain} (${selectedBusiness.region}).`,
-        latency: `${Math.floor(22 + Math.random() * 15)}ms`,
-      };
-
-      setTelemetryEvents((prev) => [newProbe, ...prev.slice(0, 7)]);
       setLastUpdatedSeconds(0);
     } catch (err) {
       // Fallback with live jitter simulation if offline
@@ -127,7 +243,11 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
     }
   }, [selectedBusiness]);
 
-  // ── Auto-Refresh Timer Hook ─────────────────────────────────────
+  // ── Initial Mount & Auto-Refresh Hook ───────────────────────────
+  useEffect(() => {
+    refreshTelemetry(false);
+  }, [refreshTelemetry]);
+
   useEffect(() => {
     if (!autoRefresh || !isConnected) return;
     const interval = setInterval(() => {
@@ -282,7 +402,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         anomalyCount={anomalies.length}
         activeServices="14/14"
         uptime="99.98%"
-        avgLatency={selectedBusiness.type === 'content' ? '64ms' : '142ms'}
+        avgLatency={liveKpis ? `${liveKpis.response_time_ms}ms` : (selectedBusiness.type === 'content' ? '64ms' : '142ms')}
         onInspectAnomalies={() => {
           const el = document.getElementById('anomalies-section-anchor');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -294,6 +414,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         businessType={selectedBusiness.type}
         comparisonPeriod={comparisonPeriod}
         onComparisonChange={setComparisonPeriod}
+        kpiOverrides={kpiOverrides}
       />
 
       {/* ── 4. Business Metrics Row (2nd Tier KPIs) ──────────────── */}
