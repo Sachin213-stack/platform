@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import {
   INITIAL_ANOMALIES_HISTORY,
   INITIAL_MODEL_METRICS,
@@ -7,6 +7,7 @@ import {
   generateCorrelationData,
   generateForecastData,
 } from '../../modules/monitor/analytics/analyticsData';
+import { dashboardApi } from '../services/apiClient';
 
 const AnalyticsContext = createContext(null);
 
@@ -27,7 +28,51 @@ export function AnalyticsProvider({ children }) {
   // ── 5. What-If Simulator Spike (+0% to +300%) ──────────────────
   const [whatIfSpike, setWhatIfSpike] = useState(0);
 
-  // ── 6. Base Crash Risk Probability (4.2% nominal) ─────────────
+  // ── 6. Live Ingested Telemetry Data ───────────────────────────
+  const [hasLiveData, setHasLiveData] = useState(false);
+  const [liveForecastCurve, setLiveForecastCurve] = useState(null);
+
+  // Fetch real analytics models and capacity data from backend
+  const fetchLiveAnalytics = useCallback(async () => {
+    try {
+      const res = await dashboardApi.getAnalytics();
+      if (!res) return;
+      if (res.has_live_data) {
+        setHasLiveData(true);
+        if (res.resource_runway) {
+          setResourceRunway((prev) => ({
+            ...prev,
+            runwayDays: res.resource_runway.runway_days ?? prev.runwayDays,
+            growthRatePct: res.resource_runway.growth_rate_pct ?? prev.growthRatePct,
+            bottleneck: res.resource_runway.bottleneck ?? prev.bottleneck,
+            status: res.resource_runway.status ?? prev.status,
+            exhaustionDate: res.resource_runway.exhaustion_date ?? prev.exhaustionDate,
+            recommendedAction: res.resource_runway.recommended_action ?? prev.recommendedAction,
+          }));
+        }
+        if (res.model_metrics) {
+          setModelMetrics((prev) => ({
+            ...prev,
+            precision: res.model_metrics.precision ?? prev.precision,
+            recall: res.model_metrics.recall ?? prev.recall,
+            f1Score: res.model_metrics.f1_score ?? prev.f1Score,
+            datasetVectors: res.model_metrics.dataset_vectors ?? prev.datasetVectors,
+          }));
+        }
+        if (res.forecast_curve && res.forecast_curve.points) {
+          setLiveForecastCurve(res.forecast_curve.points);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch live analytics from backend:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveAnalytics();
+  }, [fetchLiveAnalytics]);
+
+  // ── 7. Base Crash Risk Probability (4.2% nominal) ─────────────
   const baseCrashRisk = 4.2;
 
   // Compute live crash risk factoring in What-If spike and sensitivity
@@ -176,6 +221,9 @@ export function AnalyticsProvider({ children }) {
     activeAnomaliesCount,
     applyRecommendation,
     processNLQuery,
+    hasLiveData,
+    liveForecastCurve,
+    fetchLiveAnalytics,
     correlationPairs: CORRELATION_PAIRS,
     generateCorrelationData,
     generateForecastData,

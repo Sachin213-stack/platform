@@ -134,23 +134,51 @@ export function BusinessMetricsRow({
   businessType = 'ecommerce',
   isLive = true,
   isSyncing = false,
+  hasLiveData = false,
+  liveTierMetrics = null,
 }) {
-  const metrics = getBusinessTierMetrics(businessType, isLive);
+  const baseMetrics = getBusinessTierMetrics(businessType, isLive);
+
+  // If live data exists from backend tier_metrics, inject real values
+  const metrics = React.useMemo(() => {
+    if (!hasLiveData || !liveTierMetrics) return baseMetrics;
+    return baseMetrics.map((m) => {
+      if (m.id === 'orders-min' || m.id === 'mrr-velocity') {
+        const val = liveTierMetrics.mrr_velocity !== undefined ? String(liveTierMetrics.mrr_velocity) : m.value;
+        return { ...m, value: val, subtext: 'Calculated from live transaction events', state: 'live' };
+      }
+      if (m.id === 'churn-risk' || m.id === 'cart-abandon') {
+        const val = liveTierMetrics.auth_failure_rate !== undefined ? `${liveTierMetrics.auth_failure_rate}%` : m.value;
+        return { ...m, value: val, subtext: 'Live HTTP failure rate', state: 'live' };
+      }
+      if (m.id === 'active-sessions') {
+        const val = liveTierMetrics.active_sessions !== undefined ? Number(liveTierMetrics.active_sessions).toLocaleString() : m.value;
+        return { ...m, value: val, subtext: 'Real-time telemetry event sessions', state: 'live' };
+      }
+      if (m.id === 'streams-min') {
+        const val = liveTierMetrics.streams_min !== undefined ? Number(liveTierMetrics.streams_min).toLocaleString() : m.value;
+        return { ...m, value: val, subtext: 'Live stream ingestion rate', state: 'live' };
+      }
+      return m;
+    });
+  }, [baseMetrics, hasLiveData, liveTierMetrics]);
 
   return (
     <div className="business-metrics-section">
       <div className="business-metrics-header">
         <h3 className="business-metrics-header__title">Business Domain Metrics</h3>
-        <span className="business-metrics-header__tag">Tier 2 Conversion & Revenue Telemetry</span>
+        <span className="business-metrics-header__tag">
+          {hasLiveData ? '⚡ Live Ingested Telemetry Stream' : 'Demo Baseline Telemetry'}
+        </span>
       </div>
 
       <div className="business-metrics-grid">
         {metrics.map((metric) => {
           const liveLabel = isSyncing
             ? 'SYNCING'
-            : isLive
+            : hasLiveData
             ? 'LIVE'
-            : 'STALE';
+            : 'DEMO';
 
           const statusClass = metric.status === 'warning' ? 'biz-card--warning' : '';
 
@@ -163,8 +191,8 @@ export function BusinessMetricsRow({
               <div className="biz-card__top">
                 <span className="biz-card__label">{metric.label}</span>
                 <span
-                  className={`biz-live-badge biz-live-badge--${liveLabel.toLowerCase()}`}
-                  title={isLive ? 'Real-time telemetry stream active' : 'Offline stream'}
+                  className={`biz-live-badge biz-live-badge--${hasLiveData ? 'live' : 'stale'}`}
+                  title={hasLiveData ? 'Real-time website stream active' : 'Starter demo model'}
                 >
                   <span className="biz-live-badge__dot" />
                   {liveLabel}

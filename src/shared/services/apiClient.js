@@ -33,6 +33,7 @@ export const clearAuthSession = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem('aicto_friday_conv_id');
 };
 
 // ==========================================
@@ -312,6 +313,14 @@ export const dashboardApi = {
   async getMetrics() {
     return await request('/dashboard/metrics', { method: 'GET' });
   },
+
+  async getAnalytics() {
+    return await request('/dashboard/analytics', { method: 'GET' });
+  },
+
+  async getAuditLogs(limit = 50) {
+    return await request(`/dashboard/audit-logs?limit=${limit}`, { method: 'GET' });
+  },
 };
 
 // ==========================================
@@ -444,6 +453,11 @@ export const fridayApi = {
         conversation_id,
       }),
     });
+  },
+
+  async getHistory(conversation_id = null) {
+    const query = conversation_id ? `?conversation_id=${encodeURIComponent(conversation_id)}` : '';
+    return await request(`/friday/history${query}`, { method: 'GET' });
   },
 };
 

@@ -12,6 +12,8 @@ const PLOT_HEIGHT = SVG_HEIGHT - PADDING.top - PADDING.bottom;
 export function TrafficRevenueChart({
   businessType = 'ecommerce',
   isLive = true,
+  hasLiveData = false,
+  liveData = [],
 }) {
   const [timeRange, setTimeRange] = useState('24h'); // '24h' | '7d' | '30d'
   const [metricMode, setMetricMode] = useState('both'); // 'traffic' | 'revenue' | 'both'
@@ -22,8 +24,28 @@ export function TrafficRevenueChart({
 
   // Generate chart data based on active range and business
   const data = useMemo(() => {
+    if (hasLiveData && liveData && liveData.length > 1) {
+      return liveData.map((d) => {
+        let timeLabel = d.timestamp;
+        try {
+          if (d.timestamp && d.timestamp.includes('T')) {
+            const dt = new Date(d.timestamp);
+            timeLabel = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+        } catch {
+          // fallback
+        }
+        return {
+          time: timeLabel || '00:00',
+          traffic: d.traffic ?? 0,
+          revenue: d.revenue ?? 0,
+          responseTime: d.response_time_ms ?? 0,
+          errorRate: d.error_rate ?? 0,
+        };
+      });
+    }
     return generateChartData(timeRange, businessType);
-  }, [timeRange, businessType]);
+  }, [hasLiveData, liveData, timeRange, businessType]);
 
   // Compute scale boundaries
   const maxTraffic = useMemo(() => Math.max(...data.map((d) => d.traffic)) * 1.15, [data]);
@@ -103,12 +125,17 @@ export function TrafficRevenueChart({
         <div className="traffic-chart-header__left">
           <div className="traffic-chart-title-row">
             <h3 className="traffic-chart-title">Traffic & Revenue Telemetry</h3>
-            {isLive && (
-              <span className="traffic-live-indicator">
-                <span className="traffic-live-indicator__dot" />
-                Live Stream
+            {hasLiveData ? (
+              <span className="traffic-live-indicator" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <span className="traffic-live-indicator__dot" style={{ background: '#10b981' }} />
+                Live Website Stream
               </span>
-            )}
+            ) : isLive ? (
+              <span className="traffic-live-indicator" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                <span className="traffic-live-indicator__dot" style={{ background: '#f59e0b' }} />
+                Demo Baseline Model
+              </span>
+            ) : null}
           </div>
           <p className="traffic-chart-subtitle">
             Correlated request throughput vs checkout GMV velocity

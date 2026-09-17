@@ -144,6 +144,20 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     setActiveSpeakingText(text);
     addMessage('friday', text, suggestedActions);
 
+    // Real Browser Text-to-Speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && settings.voiceEnabled !== false) {
+      try {
+        window.speechSynthesis.cancel();
+        const cleanText = text.replace(/[*_#`]/g, '').slice(0, 280);
+        const utter = new SpeechSynthesisUtterance(cleanText);
+        utter.rate = settings.speechRate || 1.0;
+        utter.pitch = settings.speechPitch || 1.0;
+        window.speechSynthesis.speak(utter);
+      } catch (e) {
+        console.warn('SpeechSynthesis error:', e);
+      }
+    }
+
     // Calculate approximate speaking duration
     const words = text.split(' ').length;
     const duration = Math.max(2500, Math.floor((words / (3.2 * settings.speechRate)) * 1000));
@@ -156,7 +170,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     }, duration);
 
     simulationTimers.current.push(t);
-  }, [addMessage, settings.speechRate]);
+  }, [addMessage, settings.speechRate, settings.speechPitch, settings.voiceEnabled]);
 
   /**
    * onMicPress: Triggered when user begins voice capture
@@ -202,7 +216,34 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     }
   });
 
-  const [activeModel, setActiveModel] = useState('moonshotai/kimi-k3');
+  const [activeModel, setActiveModel] = useState('meta/llama-3.2-11b-vision-instruct');
+
+  // ── Restore Stored Conversation History from Backend / Redis ──────
+  useEffect(() => {
+    let isMounted = true;
+    if (conversationId) {
+      fridayApi.getHistory(conversationId)
+        .then((history) => {
+          if (!isMounted || !history?.messages || history.messages.length === 0) return;
+          const loaded = history.messages.map((m, idx) => ({
+            id: `hist-${idx}-${Date.now()}`,
+            sender: m.role === 'assistant' ? 'friday' : (m.role || 'user'),
+            time: m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Earlier',
+            text: m.content,
+          }));
+          setMessages(loaded);
+        })
+        .catch((err) => {
+          console.warn('Failed to load conversation history:', err);
+        });
+    }
+    return () => { isMounted = false; };
+  }, [conversationId]);
+
+  // Reset dispatch ref when initialContext prop changes
+  useEffect(() => {
+    initialContextDispatchedRef.current = false;
+  }, [initialContext]);
 
   // ── Dynamic "Ask FRIDAY about this" Hook from Analytics & Dashboard ──
   useEffect(() => {
@@ -235,7 +276,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         console.error('FRIDAY initial context query failed:', err);
         addMessage(
           'friday',
-          `⚠️ **FRIDAY Notice**: ${err.message || 'Could not reach Kimi LLM'}`
+          `⚠️ **FRIDAY Notice**: ${err.message || 'Could not reach LLM'}`
         );
       });
     }
@@ -255,6 +296,14 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
 
     setActiveTranscription('');
     addMessage('user', userText);
+
+    // Check if voice directive updates client state directly
+    const nlResult = processNLQuery ? processNLQuery(userText) : null;
+    if (nlResult && nlResult.actionTaken === 'UPDATE_SENSITIVITY') {
+      onAssistantResponse(nlResult.text);
+      addCommandHistoryItem(userText, nlResult.text);
+      return;
+    }
 
     try {
       const res = await fridayApi.sendMessage({
@@ -278,7 +327,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}`
       );
     }
-  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel]);
+  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel, processNLQuery]);
 
   /**
    * onCancelVoice: Triggered when user interrupts speech or listening
@@ -353,6 +402,16 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     const prompt = inputVal;
     setInputVal('');
     addMessage('user', prompt);
+
+    // Check if command is a client-side parameter update (e.g. "set sensitivity to 92%")
+    const nlResult = processNLQuery ? processNLQuery(prompt) : null;
+    if (nlResult && nlResult.actionTaken === 'UPDATE_SENSITIVITY') {
+      addMessage('friday', nlResult.text);
+      addCommandHistoryItem(prompt, nlResult.text);
+      soundFX.playSuccessChime();
+      return;
+    }
+
     setIsSending(true);
 
     try {

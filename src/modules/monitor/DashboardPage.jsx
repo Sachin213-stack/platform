@@ -42,6 +42,12 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const [activityFeed] = useState(RECENT_ACTIVITY_FEED);
   const [liveKpis, setLiveKpis] = useState(null);
 
+  // Dynamic live website telemetry indicators
+  const [hasLiveData, setHasLiveData] = useState(false);
+  const [timeseriesData, setTimeseriesData] = useState([]);
+  const [liveTierMetrics, setLiveTierMetrics] = useState(null);
+  const [showIntegrationSnippet, setShowIntegrationSnippet] = useState(false);
+
   // Cluster vitals
   const [cpuUsage, setCpuUsage] = useState(48);
   const [memUsage, setMemUsage] = useState(64);
@@ -154,6 +160,14 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
       // Call backend metrics endpoint
       const metricsData = await dashboardApi.getMetrics();
       if (metricsData) {
+        setHasLiveData(Boolean(metricsData.has_live_data));
+        if (metricsData.timeseries && metricsData.timeseries.length > 0) {
+          setTimeseriesData(metricsData.timeseries);
+        }
+        if (metricsData.tier_metrics) {
+          setLiveTierMetrics(metricsData.tier_metrics);
+        }
+
         if (metricsData.kpis) {
           setLiveKpis(metricsData.kpis);
         }
@@ -322,7 +336,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const handleOpenFridayWithContext = (anomaly) => {
     if (onNavigate) {
       onNavigate('friday-ai', {
-        initialPrompt: `I noticed anomaly "${anomaly.title}" on service ${anomaly.service} (${anomaly.deviation}). What is the recommended remediation strategy and rollback plan?`,
+        initialPrompt: `I noticed anomaly "${anomaly.title}" on service ${anomaly.service} (${anomaly.deviation || 'variance detected'}). What is the recommended remediation strategy and rollback plan?`,
         context: anomaly,
       });
     }
@@ -395,6 +409,55 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         onNavigate={onNavigate}
       />
 
+      {/* ── Real Website vs Demo Baseline Connection Bar ──────────── */}
+      <div style={{
+        margin: 'var(--space-2) 0 var(--space-4)',
+        padding: '12px 18px',
+        borderRadius: 'var(--radius-lg)',
+        background: hasLiveData 
+          ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.04))'
+          : 'linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.04))',
+        border: hasLiveData
+          ? '1px solid rgba(16, 185, 129, 0.3)'
+          : '1px solid rgba(245, 158, 11, 0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            backgroundColor: hasLiveData ? '#10b981' : '#f59e0b',
+            boxShadow: hasLiveData ? '0 0 10px #10b981' : '0 0 8px #f59e0b',
+            display: 'inline-block',
+          }} />
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            {hasLiveData
+              ? 'Active Website Telemetry Connected — Ingesting live microservice metrics & transactions'
+              : 'Demo Baseline Active — Showing starter telemetry models until your active website sends events'}
+          </span>
+        </div>
+        <button
+          onClick={() => setShowIntegrationSnippet(true)}
+          style={{
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid var(--color-border-subtle)',
+            color: 'var(--color-text-primary)',
+            padding: '6px 14px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '12px',
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+        >
+          {hasLiveData ? '🔌 View Ingestion Snippet' : '⚡ Connect Active Website'}
+        </button>
+      </div>
+
       {/* ── 2. Health Status Banner ──────────────────────────────── */}
       <HealthStatusBanner
         healthScore={healthScore}
@@ -422,6 +485,8 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         businessType={selectedBusiness.type}
         isLive={isConnected}
         isSyncing={isRefreshing}
+        hasLiveData={hasLiveData}
+        liveTierMetrics={liveTierMetrics}
       />
 
       {/* ── Main Two-Column Content Grid ─────────────────────────── */}
@@ -432,6 +497,8 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
           <TrafficRevenueChart
             businessType={selectedBusiness.type}
             isLive={isConnected}
+            hasLiveData={hasLiveData}
+            liveData={timeseriesData}
           />
 
           {/* ── 5. Active Anomalies & Recommendations ─────────────── */}
@@ -473,6 +540,140 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
           />
         </div>
       </div>
+
+      {/* ── Integration Snippet Modal ─────────────────────────────── */}
+      {showIntegrationSnippet && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px',
+        }}>
+          <div style={{
+            background: 'var(--color-bg-surface, #131722)',
+            border: '1px solid var(--color-border-subtle, rgba(255,255,255,0.12))',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '100%',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--color-text-primary)' }}>
+                Connect Active Website / Microservice
+              </h3>
+              <button
+                onClick={() => setShowIntegrationSnippet(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
+              Add this lightweight telemetry tracker to your website's <code>&lt;head&gt;</code> or dispatch telemetry events directly to the ingestion API. Once the first event is received, all dummy baseline data will automatically be replaced with genuine real metrics.
+            </p>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '6px' }}>
+                Option 1: Frontend Script Tag (HTML / Next.js / Shopify)
+              </div>
+              <pre style={{
+                background: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                overflowX: 'auto',
+                color: '#34d399',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}>
+{`<script
+  src="https://cdn.aicto.ai/beacon.v1.js"
+  data-tenant="${selectedBusiness?.slug || 'my-store'}"
+  data-api="http://localhost:8000/api/ingestion/events"
+  async>
+</script>`}
+              </pre>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '6px' }}>
+                Option 2: Direct HTTP Telemetry Ingestion (cURL / Backend / Webhook)
+              </div>
+              <pre style={{
+                background: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                overflowX: 'auto',
+                color: '#60a5fa',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}>
+{`curl -X POST http://localhost:8000/api/ingestion/events \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: aicto_live_${selectedBusiness?.slug || 'key'}" \\
+  -d '[{
+    "event_type": "request",
+    "response_time_ms": 142.5,
+    "status_code": 200,
+    "revenue_amount": 89.50,
+    "endpoint": "/checkout"
+  }]'`}
+              </pre>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(`curl -X POST http://localhost:8000/api/ingestion/events -H "Content-Type: application/json" -H "X-API-Key: aicto_live_${selectedBusiness?.slug || 'key'}" -d '[{"event_type":"request","response_time_ms":142.5,"status_code":200,"revenue_amount":89.50,"endpoint":"/checkout"}]`);
+                  if (onShowToast) onShowToast({ title: 'Copied', message: 'cURL command copied to clipboard', variant: 'success' });
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: 'var(--color-text-primary)',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                📋 Copy cURL
+              </button>
+              <button
+                onClick={() => setShowIntegrationSnippet(false)}
+                style={{
+                  background: 'var(--color-primary, #6366f1)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../../shared/components/Card';
 import { Badge } from '../../shared/components/Badge';
 import { Button } from '../../shared/components/Button';
 import { HISTORICAL_DECISION_LOGS } from '../monitor/dashboardData';
+import { dashboardApi } from '../../shared/services/apiClient';
 
 export default function AuditLogPage({ onNavigate }) {
+  const [liveEntries, setLiveEntries] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const auditEntries = [
+  useEffect(() => {
+    let isMounted = true;
+    async function loadLogs() {
+      setIsLoading(true);
+      try {
+        const res = await dashboardApi.getAuditLogs();
+        if (isMounted && res && res.entries && res.entries.length > 0) {
+          const mapped = res.entries.map((e) => ({
+            id: e.id,
+            timestamp: e.executed_at ? new Date(e.executed_at).toLocaleString() : 'Recent',
+            actor: e.actor || 'FRIDAY Autonomous AI',
+            action: `${e.action_type}: ${e.message}`,
+            impact: `Confidence: ${Math.round((e.confidence || 0.95) * 100)}% | Target: ${e.service}`,
+            status: e.status || 'Executed',
+            isLive: true,
+          }));
+          setLiveEntries(mapped);
+        }
+      } catch (err) {
+        console.warn('Failed to load live audit logs:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadLogs();
+    return () => { isMounted = false; };
+  }, []);
+
+  const defaultEntries = [
     ...HISTORICAL_DECISION_LOGS,
     {
       id: 'dec-86',
@@ -27,6 +58,8 @@ export default function AuditLogPage({ onNavigate }) {
       status: 'Applied',
     },
   ];
+
+  const auditEntries = liveEntries.length > 0 ? [...liveEntries, ...defaultEntries] : defaultEntries;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'dashboardFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
@@ -68,7 +101,9 @@ export default function AuditLogPage({ onNavigate }) {
                   <span style={{ fontWeight: 'bold', fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>
                     {entry.actor}
                   </span>
-                  <Badge variant="violet" size="sm">{entry.status}</Badge>
+                  <Badge variant={entry.isLive ? "success" : "violet"} size="sm">
+                    {entry.isLive ? `Live: ${entry.status}` : entry.status}
+                  </Badge>
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
                   {entry.timestamp}
