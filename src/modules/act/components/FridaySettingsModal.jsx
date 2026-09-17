@@ -59,7 +59,7 @@ export function FridaySettingsModal({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-2)' }}>
             {AVAILABLE_LLM_MODELS.map((m) => {
-              const isSelected = (settings.selectedModel || 'kimi-k3') === m.id;
+              const isSelected = (settings.selectedModel || 'moonshotai/kimi-k3') === m.id;
               return (
                 <div
                   key={m.id}

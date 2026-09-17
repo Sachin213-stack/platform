@@ -216,7 +216,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     }
   });
 
-  const [activeModel, setActiveModel] = useState('meta/llama-3.2-11b-vision-instruct');
+  const [activeModel, setActiveModel] = useState('moonshotai/kimi-k3');
 
   // ── Restore Stored Conversation History from Backend / Redis ──────
   useEffect(() => {
@@ -572,7 +572,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
               <span>FRIDAY AI Ops Assistant</span>
               <Badge variant="violet" size="sm" dot>Autonomous Agent Online</Badge>
               <Badge variant="teal" size="sm" title={`Active LLM Engine: ${activeModel}`}>
-                ⚡ {activeModel.includes('kimi') ? 'Kimi Neural LLM (Moonshot AI)' : (activeModel.split('/')[1] || activeModel)}
+                ⚡ Kimi K3 (NVIDIA NIM)
               </Badge>
             </h2>
           </div>

@@ -1,7 +1,7 @@
 export const INITIAL_SETTINGS = {
   wakeWordEnabled: true,
   wakeWordPhrase: 'Hey FRIDAY',
-  selectedModel: 'kimi-k3',
+  selectedModel: 'moonshotai/kimi-k3',
   selectedVoice: 'friday-core-female',
   speechRate: 1.0,
   micSensitivity: 80,
@@ -12,25 +12,11 @@ export const INITIAL_SETTINGS = {
 
 export const AVAILABLE_LLM_MODELS = [
   {
-    id: 'kimi-k3',
-    name: 'Kimi K3 (Moonshot AI)',
-    provider: 'Moonshot AI',
-    description: 'Flagship 2.8T-parameter deep reasoning model with 1M-token context window and native tool calling.',
-    badge: 'Flagship Reasoning',
-  },
-  {
-    id: 'kimi-k2.6',
-    name: 'Kimi K2.6 (High-Speed Ops)',
-    provider: 'Moonshot AI',
-    description: 'High-speed long-context model optimized for autonomous operations and real-time triage.',
-    badge: 'High-Speed Ops',
-  },
-  {
-    id: 'moonshot-v1-128k',
-    name: 'Moonshot V1 128K',
-    provider: 'Moonshot AI',
-    description: 'Extended 128K context window model for deep multi-log and telemetry correlation.',
-    badge: '128K Fallback',
+    id: 'moonshotai/kimi-k3',
+    name: 'Kimi K3 (Moonshot AI / NVIDIA NIM)',
+    provider: 'Moonshot AI • NVIDIA NIM',
+    description: 'Flagship reasoning MoE model with 16,384 max tokens, native tool calling, and deep reasoning effort via NVIDIA NIM.',
+    badge: 'Flagship Active',
   },
 ];
 
