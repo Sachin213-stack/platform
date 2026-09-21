@@ -4,6 +4,7 @@ export const INITIAL_SETTINGS = {
   wakeWordPhrase: 'Hey FRIDAY (In Development)',
   wakeWordStatus: 'in_development',
   selectedModel: 'moonshotai/kimi-k3',
+  reasoningEffort: 'medium', // 'low' | 'medium' | 'max'
   selectedVoice: 'friday-core-female',
   speechRate: 1.0,
   micSensitivity: 80,
@@ -11,6 +12,27 @@ export const INITIAL_SETTINGS = {
   soundEffects: true,
   mockLatencyMs: 1200,
 };
+
+export const AVAILABLE_REASONING_EFFORTS = [
+  {
+    id: 'low',
+    label: 'Low',
+    speed: 'Fastest',
+    desc: 'Rapid triage and instant operational answers (2k tokens).',
+  },
+  {
+    id: 'medium',
+    label: 'Medium',
+    speed: 'Balanced',
+    desc: 'Standard MoE reasoning with deep context awareness (4k tokens).',
+  },
+  {
+    id: 'max',
+    label: 'Max',
+    speed: 'Deep MoE',
+    desc: 'Exhaustive reasoning chain for critical incident forensics (16k tokens).',
+  },
+];
 
 export const AVAILABLE_LLM_MODELS = [
   {

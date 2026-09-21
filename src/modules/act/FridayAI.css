@@ -767,3 +767,59 @@
   border-color: var(--color-accent);
   transform: translateY(-1px);
 }
+
+/* ── Reasoning Effort Controls & Unified Bar ───────────────── */
+.friday-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border-subtle);
+  margin-bottom: var(--space-1);
+}
+
+.friday-reasoning-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 2px 4px;
+}
+
+.friday-reasoning-toggle-label {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.05em;
+  padding: 0 4px;
+}
+
+.friday-reasoning-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.friday-reasoning-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+.friday-reasoning-btn--active {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent-light);
+  font-weight: var(--weight-bold);
+}

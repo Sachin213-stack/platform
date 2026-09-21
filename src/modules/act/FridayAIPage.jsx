@@ -224,6 +224,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         conversation_id: conversationId,
         mode: 'voice',
         model: settings.selectedModel || activeModel,
+        reasoning_effort: settings.reasoningEffort || 'medium',
         context_hints: {
           anomalies: anomalies.slice(0, 3),
           liveCrashRisk,
@@ -319,6 +320,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         conversation_id: conversationId,
         mode: 'chat',
         model: settings.selectedModel || activeModel,
+        reasoning_effort: settings.reasoningEffort || 'medium',
         context_hints: hints,
       })
       .then((res) => {
@@ -413,6 +415,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         conversation_id: conversationId,
         mode: 'chat',
         model: settings.selectedModel || activeModel,
+        reasoning_effort: settings.reasoningEffort || 'medium',
       });
       setIsSending(false);
       const aiReply = response.response || response.content || (response.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'Systems nominal. No anomalous patterns detected.');
@@ -778,26 +781,50 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
           {/* Chat Mode Input Row (When Chat Mode is Active) */}
           {mode === 'chat' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {/* Quick Commands Chips */}
-              <div className="friday-quick-commands-bar">
-                <span className="friday-quick-commands-label">⚡ Directives:</span>
-                {[
-                  'Check cluster latency and health',
-                  "Show today's active anomalies",
-                  'What is current crash risk?',
-                  'Propose capacity scale-out for checkout-v2',
-                ].map((cmd) => (
-                  <button
-                    key={cmd}
-                    type="button"
-                    className="friday-quick-cmd-chip"
-                    onClick={() => {
-                      setInputVal(cmd);
-                    }}
-                  >
-                    {cmd}
-                  </button>
-                ))}
+              {/* Directives & Reasoning Effort Bar */}
+              <div className="friday-controls-bar">
+                <div className="friday-reasoning-toggle-group">
+                  <span className="friday-reasoning-toggle-label">Reasoning:</span>
+                  {[
+                    { id: 'low', label: 'Low', title: 'Low: Fastest response (~1-2s triage)' },
+                    { id: 'medium', label: 'Medium', title: 'Medium: Balanced MoE reasoning (Recommended)' },
+                    { id: 'max', label: 'Max', title: 'Max: Deep MoE analysis (Full 16k tokens)' },
+                  ].map((tier) => {
+                    const isActive = (settings.reasoningEffort || 'medium') === tier.id;
+                    return (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        className={`friday-reasoning-btn ${isActive ? 'friday-reasoning-btn--active' : ''}`}
+                        onClick={() => handleUpdateSettings({ reasoningEffort: tier.id })}
+                        title={tier.title}
+                      >
+                        {tier.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="friday-quick-commands-bar">
+                  <span className="friday-quick-commands-label">Directives:</span>
+                  {[
+                    'Check cluster latency and health',
+                    "Show today's active anomalies",
+                    'What is current crash risk?',
+                    'Propose capacity scale-out for checkout-v2',
+                  ].map((cmd) => (
+                    <button
+                      key={cmd}
+                      type="button"
+                      className="friday-quick-cmd-chip"
+                      onClick={() => {
+                        setInputVal(cmd);
+                      }}
+                    >
+                      {cmd}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="friday-chat-input-row">

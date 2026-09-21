@@ -3,7 +3,7 @@ import { Modal } from '../../../shared/components/Modal';
 import { Button } from '../../../shared/components/Button';
 import { ToggleRow } from '../../../shared/components/ToggleRow';
 import { Badge } from '../../../shared/components/Badge';
-import { AVAILABLE_VOICES, AVAILABLE_LLM_MODELS, INITIAL_SETTINGS } from './fridayData';
+import { AVAILABLE_VOICES, AVAILABLE_LLM_MODELS, AVAILABLE_REASONING_EFFORTS, INITIAL_SETTINGS } from './fridayData';
 
 export function FridaySettingsModal({
   isOpen,
@@ -88,6 +88,46 @@ export function FridaySettingsModal({
                   </div>
                   <p style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', lineHeight: '1.3', margin: 0 }}>
                     {m.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Section 0B: Reasoning Depth & Thinking Effort */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--color-accent-light)', letterSpacing: '0.05em' }}>
+              Reasoning Depth & Thinking Effort
+            </h4>
+            <Badge variant="cyan" size="sm">User Controlled</Badge>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-2)' }}>
+            {AVAILABLE_REASONING_EFFORTS.map((effort) => {
+              const isSelected = (settings.reasoningEffort || 'medium') === effort.id;
+              return (
+                <div
+                  key={effort.id}
+                  onClick={() => onUpdateSettings({ reasoningEffort: effort.id })}
+                  style={{
+                    padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius-md)',
+                    background: isSelected ? 'var(--color-accent-subtle)' : 'var(--color-bg-tertiary)',
+                    border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border-subtle)'}`,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-sm)', color: isSelected ? 'var(--color-accent-light)' : 'var(--color-text-primary)', marginBottom: '2px' }}>
+                    {effort.label}
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
+                    {effort.speed}
+                  </div>
+                  <p style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', lineHeight: '1.2', margin: 0 }}>
+                    {effort.desc}
                   </p>
                 </div>
               );

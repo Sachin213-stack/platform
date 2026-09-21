@@ -327,7 +327,7 @@ export const dashboardApi = {
 // FRIDAY AI-CTO Conversational API
 // ==========================================
 export const fridayApi = {
-  async sendMessage({ message, conversation_id = null, mode = 'chat', model = null, context_hints = null }) {
+  async sendMessage({ message, conversation_id = null, mode = 'chat', model = null, reasoning_effort = 'medium', context_hints = null }) {
     return await request('/friday/chat', {
       method: 'POST',
       body: JSON.stringify({
@@ -335,6 +335,7 @@ export const fridayApi = {
         conversation_id,
         mode,
         model,
+        reasoning_effort,
         context_hints,
       }),
     });
