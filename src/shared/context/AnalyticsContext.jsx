@@ -38,38 +38,36 @@ export function AnalyticsProvider({ children }) {
     try {
       const res = await dashboardApi.getAnalytics();
       if (!res) return;
-      if (res.has_live_data || (res.anomalies && res.anomalies.length > 0)) {
-        setHasLiveData(true);
-        if (res.crash_risk_pct !== undefined && res.crash_risk_pct !== null) {
-          setBaseCrashRisk(Number(res.crash_risk_pct));
-        }
-        if (res.anomalies && Array.isArray(res.anomalies) && res.anomalies.length > 0) {
-          setAnomalies(res.anomalies);
-          setSelectedAnomalyId((prev) => prev || res.anomalies[0].id);
-        }
-        if (res.resource_runway_days) {
-          setResourceRunway((prev) => ({
-            ...prev,
-            runwayDays: res.resource_runway_days,
-            growthRatePct: res.growth_rate_pct ?? prev.growthRatePct,
-            bottleneck: res.bottleneck ?? prev.bottleneck,
-            status: res.resource_runway_days < 14 ? 'Critical' : 'Healthy',
-            exhaustionDate: res.exhaustion_date ?? prev.exhaustionDate,
-            recommendedAction: res.recommended_action ?? prev.recommendedAction,
-          }));
-        }
-        if (res.model_metrics) {
-          setModelMetrics((prev) => ({
-            ...prev,
-            precision: res.model_metrics.precision ?? prev.precision,
-            recall: res.model_metrics.recall ?? prev.recall,
-            f1Score: res.model_metrics.f1Score ?? prev.f1Score,
-            datasetVectors: res.model_metrics.datasetVectors ?? prev.datasetVectors,
-          }));
-        }
-        if (res.forecast_curve && (res.forecast_curve.points || res.forecast_curve.yhat)) {
-          setLiveForecastCurve(res.forecast_curve.points || res.forecast_curve);
-        }
+      setHasLiveData(Boolean(res.has_live_data));
+      if (res.crash_risk_pct !== undefined && res.crash_risk_pct !== null) {
+        setBaseCrashRisk(Number(res.crash_risk_pct));
+      }
+      if (res.anomalies && Array.isArray(res.anomalies) && res.anomalies.length > 0) {
+        setAnomalies(res.anomalies);
+        setSelectedAnomalyId((prev) => prev || res.anomalies[0].id);
+      }
+      if (res.resource_runway_days) {
+        setResourceRunway((prev) => ({
+          ...prev,
+          runwayDays: res.resource_runway_days,
+          growthRatePct: res.growth_rate_pct ?? prev.growthRatePct,
+          bottleneck: res.bottleneck ?? prev.bottleneck,
+          status: res.resource_runway_days < 14 ? 'Critical' : 'Healthy',
+          exhaustionDate: res.exhaustion_date ?? prev.exhaustionDate,
+          recommendedAction: res.recommended_action ?? prev.recommendedAction,
+        }));
+      }
+      if (res.model_metrics) {
+        setModelMetrics((prev) => ({
+          ...prev,
+          precision: res.model_metrics.precision ?? prev.precision,
+          recall: res.model_metrics.recall ?? prev.recall,
+          f1Score: res.model_metrics.f1Score ?? prev.f1Score,
+          datasetVectors: res.model_metrics.datasetVectors ?? prev.datasetVectors,
+        }));
+      }
+      if (res.forecast_curve && (res.forecast_curve.points || res.forecast_curve.yhat)) {
+        setLiveForecastCurve(res.forecast_curve.points || res.forecast_curve);
       }
     } catch (e) {
       console.warn('Could not fetch live analytics from backend:', e);
