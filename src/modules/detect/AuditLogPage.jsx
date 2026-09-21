@@ -2,64 +2,40 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../../shared/components/Card';
 import { Badge } from '../../shared/components/Badge';
 import { Button } from '../../shared/components/Button';
-import { HISTORICAL_DECISION_LOGS } from '../monitor/dashboardData';
 import { dashboardApi } from '../../shared/services/apiClient';
 
 export default function AuditLogPage({ onNavigate }) {
   const [liveEntries, setLiveEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function loadLogs() {
-      setIsLoading(true);
-      try {
-        const res = await dashboardApi.getAuditLogs();
-        if (isMounted && res && res.entries && res.entries.length > 0) {
-          const mapped = res.entries.map((e) => ({
-            id: e.id,
-            timestamp: e.executed_at ? new Date(e.executed_at).toLocaleString() : 'Recent',
-            actor: e.actor || 'FRIDAY Autonomous AI',
-            action: `${e.action_type}: ${e.message}`,
-            impact: `Confidence: ${Math.round((e.confidence || 0.95) * 100)}% | Target: ${e.service}`,
-            status: e.status || 'Executed',
-            isLive: true,
-          }));
-          setLiveEntries(mapped);
-        }
-      } catch (err) {
-        console.warn('Failed to load live audit logs:', err);
-      } finally {
-        if (isMounted) setIsLoading(false);
+  const loadLogs = async () => {
+    setIsLoading(true);
+    try {
+      const res = await dashboardApi.getAuditLogs();
+      if (res && res.entries && res.entries.length > 0) {
+        const mapped = res.entries.map((e) => ({
+          id: e.id,
+          timestamp: e.timestamp || (e.executed_at ? new Date(e.executed_at).toLocaleString() : 'Recent'),
+          actor: e.actor || 'FRIDAY Autonomous AI',
+          action: e.action || e.message || `Action executed on ${e.service || 'service'}`,
+          impact: e.impact || `Confidence: ${e.confidence || '99.5%'} | Target: ${e.service || 'cluster'}`,
+          status: e.status || 'Executed',
+          isLive: true,
+        }));
+        setLiveEntries(mapped);
       }
+    } catch (err) {
+      console.warn('Failed to load live audit logs:', err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadLogs();
-    return () => { isMounted = false; };
   }, []);
 
-  const defaultEntries = [
-    ...HISTORICAL_DECISION_LOGS,
-    {
-      id: 'dec-86',
-      timestamp: '2 days ago',
-      actor: 'Sarah Jenkins (SRE Lead)',
-      action: 'Rotated API Key & Token for Stripe Production Webhooks',
-      impact: 'Zero failed webhook calls across 14,000 transactions.',
-      confidence: 'Verified',
-      status: 'Resolved',
-    },
-    {
-      id: 'dec-85',
-      timestamp: '3 days ago',
-      actor: 'FRIDAY AI Optimizer',
-      action: 'Auto-scaled SQS processing worker pods from 6 to 18 during flash sale peak',
-      impact: 'Queue backlog eliminated within 90 seconds.',
-      confidence: '99.9%',
-      status: 'Applied',
-    },
-  ];
-
-  const auditEntries = liveEntries.length > 0 ? [...liveEntries, ...defaultEntries] : defaultEntries;
+  const auditEntries = liveEntries;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', animation: 'dashboardFadeIn 280ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
@@ -76,9 +52,14 @@ export default function AuditLogPage({ onNavigate }) {
           </p>
         </div>
 
-        <Button variant="secondary" size="sm" onClick={() => onNavigate && onNavigate('dashboard')}>
-          ← Return to Dashboard
-        </Button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <Button variant="ghost" size="sm" onClick={loadLogs} disabled={isLoading}>
+            {isLoading ? 'Refreshing...' : '🔄 Refresh Ledger'}
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onNavigate && onNavigate('dashboard')}>
+            ← Return to Dashboard
+          </Button>
+        </div>
       </div>
 
       <Card padding="normal">

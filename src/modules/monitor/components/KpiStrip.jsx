@@ -115,6 +115,110 @@ export function getKpisForBusiness(businessType = 'ecommerce', comparisonBasis =
         },
       ];
 
+    case 'fintech':
+      return [
+        {
+          id: 'response-time',
+          label: 'Core Banking Latency',
+          value: '42ms',
+          rawValue: 42,
+          threshold: { warn: 100, crit: 250 },
+          unit: 'ms',
+          delta: isWeek ? '-15.2%' : '-4.8%',
+          deltaType: 'positive',
+          sparkline: [58, 52, 48, 45, 43, 42],
+          target: 'ISO-8583 < 100ms',
+        },
+        {
+          id: 'tx-throughput',
+          label: 'Settlement Throughput',
+          value: '18.4k',
+          rawValue: 18400,
+          threshold: { warn: 35000, crit: 60000 },
+          unit: 'tx/m',
+          delta: isWeek ? '+22.4%' : '+9.2%',
+          deltaType: 'positive',
+          sparkline: [14.2, 15.0, 16.1, 16.8, 17.5, 18.4],
+          target: 'Scale cap: 50k tx/m',
+        },
+        {
+          id: 'auth-failure-rate',
+          label: 'Auth & 2FA Failures',
+          value: '0.04%',
+          rawValue: 0.04,
+          threshold: { warn: 0.2, crit: 0.8 },
+          unit: '%',
+          delta: isWeek ? '-0.02%' : '-0.01%',
+          deltaType: 'positive',
+          sparkline: [0.08, 0.07, 0.06, 0.05, 0.04, 0.04],
+          target: '< 0.1% SLA',
+        },
+        {
+          id: 'gateway-error-rate',
+          label: 'Gateway 5xx Errors',
+          value: '0.02%',
+          rawValue: 0.02,
+          threshold: { warn: 0.1, crit: 0.5 },
+          unit: '%',
+          delta: isWeek ? '-0.03%' : '+0.00%',
+          deltaType: 'neutral',
+          sparkline: [0.05, 0.04, 0.03, 0.02, 0.02, 0.02],
+          target: '< 0.05% Critical SLA',
+        },
+      ];
+
+    case 'marketplace':
+      return [
+        {
+          id: 'response-time',
+          label: 'Avg Response Time',
+          value: '135ms',
+          rawValue: 135,
+          threshold: { warn: 200, crit: 350 },
+          unit: 'ms',
+          delta: isWeek ? '-10.5%' : '-3.8%',
+          deltaType: 'positive',
+          sparkline: [160, 152, 145, 140, 138, 135],
+          target: 'SLA < 200ms',
+        },
+        {
+          id: 'gmv-velocity',
+          label: 'GMV Orders / Min',
+          value: '84.2',
+          rawValue: 84.2,
+          threshold: { warn: 150, crit: 300 },
+          unit: 'orders/m',
+          delta: isWeek ? '+16.8%' : '+7.4%',
+          deltaType: 'positive',
+          sparkline: [68, 72, 75, 78, 81, 84.2],
+          target: 'Cross-vendor routing',
+        },
+        {
+          id: 'search-latency',
+          label: 'Search Index Latency',
+          value: '28ms',
+          rawValue: 28,
+          threshold: { warn: 60, crit: 120 },
+          unit: 'ms',
+          delta: isWeek ? '-6.2%' : '-2.1%',
+          deltaType: 'positive',
+          sparkline: [36, 34, 32, 30, 29, 28],
+          target: 'OpenSearch cluster < 50ms',
+        },
+        {
+          id: 'checkout-failure',
+          label: 'Checkout Failure Rate',
+          value: '0.62%',
+          rawValue: 0.62,
+          threshold: { warn: 1.0, crit: 2.5 },
+          unit: '%',
+          delta: isWeek ? '-0.18%' : '-0.06%',
+          deltaType: 'positive',
+          sparkline: [0.85, 0.78, 0.72, 0.68, 0.65, 0.62],
+          target: '< 1.0% SLA',
+        },
+      ];
+
     case 'ecommerce':
     default:
       return [

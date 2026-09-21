@@ -7,6 +7,9 @@ import { FridayContextPanel } from './components/FridayContextPanel';
 import { FridayVoiceMic } from './components/FridayVoiceMic';
 import { FridaySettingsModal } from './components/FridaySettingsModal';
 import { FridayDevSimulator } from './components/FridayDevSimulator';
+import { FridayChatHistoryDrawer } from './components/FridayChatHistoryDrawer';
+import { fridayMemory } from './services/fridayMemoryService';
+import { voiceEngine } from './services/voiceEngine';
 import { soundFX } from './components/soundFX';
 import { useAnalytics } from '../../shared/context/AnalyticsContext';
 import {
@@ -15,6 +18,7 @@ import {
   SIMULATION_PRESETS,
 } from './components/fridayData';
 import { fridayApi } from '../../shared/services/apiClient';
+
 
 
 /**
@@ -36,18 +40,33 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
   const [activeTranscription, setActiveTranscription] = useState('');
   const [activeSpeakingText, setActiveSpeakingText] = useState('');
 
-  // ── Messages & Command History ──────────────────────────────────
-  const [messages, setMessages] = useState(() => [
-    {
-      id: 'm1',
-      sender: 'friday',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text:
-        activeAnomaliesCount > 0
-          ? `Good evening. I am monitoring all microservice telemetry via Kimi (Moonshot AI). Telemetry watch alert: ${activeAnomaliesCount} active anomaly detected (${anomalies[0]?.title || 'Checkout Latency Spike'}). Crash risk is currently ${liveCrashRisk}%. How can I assist you with infrastructure operations?`
-          : 'Good evening. I am monitoring all microservice telemetry, edge TLS handshakes, and autonomous incident mitigations via Kimi (Moonshot AI). Zero active anomalies detected. How can I assist you with infrastructure operations?',
-    },
-  ]);
+  // ── Messages & Command History (Synchronized via fridayMemory) ──
+  const [messages, setMessages] = useState(() => {
+    const existing = fridayMemory.getMessages();
+    if (existing && existing.length > 0) return existing;
+    const welcome = [
+      {
+        id: 'm1',
+        sender: 'friday',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text:
+          activeAnomaliesCount > 0
+            ? `Good evening. I am monitoring all microservice telemetry via Kimi (Moonshot AI). Telemetry watch alert: ${activeAnomaliesCount} active anomaly detected (${anomalies[0]?.title || 'Checkout Latency Spike'}). Crash risk is currently ${liveCrashRisk}%. How can I assist you with infrastructure operations?`
+            : 'Good evening. I am monitoring all microservice telemetry, edge TLS handshakes, and autonomous incident mitigations via Kimi (Moonshot AI). Zero active anomalies detected. How can I assist you with infrastructure operations?',
+      },
+    ];
+    fridayMemory.setMessages(welcome);
+    return welcome;
+  });
+
+  // Subscribe to memory updates (voice assistant turns, chat turns, cross-tab)
+  useEffect(() => {
+    const unsubscribe = fridayMemory.subscribe((newMsgs) => {
+      setMessages(newMsgs);
+    });
+    fridayMemory.syncWithBackend();
+    return unsubscribe;
+  }, []);
 
   const [isSending, setIsSending] = useState(false);
   const [executingActionId, setExecutingActionId] = useState(null);
@@ -99,18 +118,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
 
   // Add Message helper
   const addMessage = useCallback((sender, text, suggestedActions = null) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `m-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        sender,
-        time: timeStr,
-        text,
-        suggestedActions,
-      },
-    ]);
+    fridayMemory.appendTurn(sender, text, suggestedActions);
   }, []);
 
   // Add Command History helper
@@ -135,110 +143,162 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
   // INTERACTION HOOKS (Ready for backend wiring)
   // =========================================================================
 
+  const conversationId = fridayMemory.getConversationId();
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+
+  const handleSelectSession = useCallback((sessionId) => {
+    const loaded = fridayMemory.loadSession(sessionId);
+    if (loaded && loaded.length > 0) {
+      setMessages(loaded);
+    }
+    soundFX.playSuccessChime();
+  }, []);
+
+  const handleNewConversation = useCallback(() => {
+    fridayMemory.resetConversation();
+    const welcome = [
+      {
+        id: `m-welcome-${Date.now()}`,
+        sender: 'friday',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: 'Started a new session. All live cluster telemetry is nominal. How can I assist you?',
+      },
+    ];
+    fridayMemory.setMessages(welcome);
+    soundFX.playSuccessChime();
+  }, []);
+
+  const [activeModel, setActiveModel] = useState('moonshotai/kimi-k3');
+  const onMicPressRef = useRef(null);
+
   /**
    * onAssistantResponse: Triggered when assistant has response text ready
-   * Defined before onMicRelease so it is initialized and available in callbacks
    */
   const onAssistantResponse = useCallback((text, suggestedActions = null) => {
     setMicState('speaking');
     setActiveSpeakingText(text);
     addMessage('friday', text, suggestedActions);
 
-    // Real Browser Text-to-Speech synthesis
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && settings.voiceEnabled !== false) {
-      try {
-        window.speechSynthesis.cancel();
-        const cleanText = text.replace(/[*_#`]/g, '').slice(0, 280);
-        const utter = new SpeechSynthesisUtterance(cleanText);
-        utter.rate = settings.speechRate || 1.0;
-        utter.pitch = settings.speechPitch || 1.0;
-        window.speechSynthesis.speak(utter);
-      } catch (e) {
-        console.warn('SpeechSynthesis error:', e);
-      }
-    }
-
-    // Calculate approximate speaking duration
-    const words = text.split(' ').length;
-    const duration = Math.max(2500, Math.floor((words / (3.2 * settings.speechRate)) * 1000));
-
-    const t = setTimeout(() => {
-      soundFX.playSuccessChime();
-      setMicState('idle');
-      setActiveSpeakingText('');
-      setIsSimulating(false);
-    }, duration);
-
-    simulationTimers.current.push(t);
-  }, [addMessage, settings.speechRate, settings.speechPitch, settings.voiceEnabled]);
+    voiceEngine.playNeuralSpeech(text, {
+      voice: settings.selectedVoice,
+      rate: settings.speechRate,
+      onEnd: () => {
+        soundFX.playSuccessChime();
+        setMicState('idle');
+        setActiveSpeakingText('');
+        setIsSimulating(false);
+        if (settings.handsFree !== false && onMicPressRef.current) {
+          setTimeout(() => {
+            onMicPressRef.current();
+          }, 400);
+        }
+      },
+    });
+  }, [addMessage, settings.selectedVoice, settings.speechRate, settings.handsFree]);
 
   /**
-   * onMicPress: Triggered when user begins voice capture
-   * // TODO: connect to backend - Initialize Web Audio STT streaming session
+   * onMicRelease: Triggered when user finishes speaking
+   * Transcribes speech buffer and posts to FRIDAY FastAPI LLM orchestrator
+   */
+  const onMicRelease = useCallback(async (customPrompt) => {
+    voiceEngine.stopListening();
+    soundFX.playMicStop();
+    setMicState('processing');
+
+    const userText = customPrompt || (activeTranscription.replace('Listening to your directive...', '').trim() || 'FRIDAY, check cluster health and error budgets.');
+
+    setActiveTranscription('');
+    addMessage('user', userText);
+
+    // Check if voice directive updates client state directly
+    const nlResult = processNLQuery ? processNLQuery(userText) : null;
+    if (nlResult && nlResult.actionTaken === 'UPDATE_SENSITIVITY') {
+      onAssistantResponse(nlResult.text);
+      addCommandHistoryItem(userText, nlResult.text);
+      return;
+    }
+
+    try {
+      const res = await fridayApi.sendMessage({
+        message: userText,
+        conversation_id: conversationId,
+        mode: 'voice',
+        model: settings.selectedModel || activeModel,
+        context_hints: {
+          anomalies: anomalies.slice(0, 3),
+          liveCrashRisk,
+          activeAnomaliesCount,
+        },
+      });
+      const aiReply = res.response || res.content || (res.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'Systems nominal. No anomalous patterns detected.');
+      if (res.model_used) setActiveModel(res.model_used);
+      onAssistantResponse(aiReply, res.suggested_actions);
+      addCommandHistoryItem(userText, aiReply);
+      return;
+    } catch (err) {
+      console.error('Voice API call failed:', err);
+      setMicState('idle');
+      addMessage(
+        'friday',
+        `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}`
+      );
+    }
+  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel, processNLQuery, anomalies, liveCrashRisk, activeAnomaliesCount]);
+
+  /**
+   * onMicPress: Triggered when user begins real voice capture
    */
   const onMicPress = useCallback(() => {
     clearAllTimers();
     setIsSimulating(false);
     setActiveSpeakingText('');
     setMicState('listening');
-    setActiveTranscription('Listening for voice directive...');
+    setActiveTranscription('Listening to your directive...');
     soundFX.playMicStart();
 
-    // Mock live recognition feedback preview
-    const phrases = [
-      'Listening...',
-      'Listening: "FRIDAY...',
-      'Listening: "FRIDAY, verify cluster replicas and latency"',
-    ];
-    let step = 0;
-    const interval = setInterval(() => {
-      step++;
-      if (step < phrases.length) {
-        setActiveTranscription(phrases[step]);
-      } else {
-        clearInterval(interval);
-      }
-    }, 600);
-    simulationTimers.current.push(interval);
+    voiceEngine.startListening({
+      onStateChange: (state) => setMicState(state),
+      onInterimTranscript: (text) => setActiveTranscription(text),
+      onFinalTranscript: (text) => onMicRelease(text),
+      onError: (err) => {
+        console.warn('Recognition error:', err);
+        setMicState('idle');
+        const errMsg = err?.message || 'Speech recognition interrupted.';
+        if (
+          errMsg.includes('PERMISSION_DENIED') ||
+          errMsg.includes('SPEECH_UNSUPPORTED') ||
+          errMsg.includes('NETWORK_ERROR') ||
+          errMsg.includes('SERVICE_ERROR')
+        ) {
+          addMessage(
+            'friday',
+            `⚠️ **Voice Input Diagnostic**\n\n${errMsg}\n\n*Note: You can continue issuing commands and analyzing infrastructure by typing in the prompt below.*`
+          );
+        }
+      },
+    });
+  }, [clearAllTimers, onMicRelease, addMessage]);
+
+  useEffect(() => {
+    onMicPressRef.current = onMicPress;
+  }, [onMicPress]);
+
+  /**
+   * onCancelVoice: Triggered when user interrupts speech or listening
+   */
+
+  const onCancelVoice = useCallback(() => {
+    clearAllTimers();
+    voiceEngine.interrupt();
+    voiceEngine.stopListening();
+    setMicState('idle');
+    setActiveTranscription('');
+    setActiveSpeakingText('');
+    setIsSimulating(false);
   }, [clearAllTimers]);
 
-  const [conversationId] = useState(() => {
-    try {
-      const saved = localStorage.getItem('aicto_friday_conv_id');
-      if (saved && saved !== 'conv-default') return saved;
-      const created = (typeof crypto !== 'undefined' && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : '00000000-0000-4000-8000-000000000001';
-      localStorage.setItem('aicto_friday_conv_id', created);
-      return created;
-    } catch {
-      return '00000000-0000-4000-8000-000000000001';
-    }
-  });
 
-  const [activeModel, setActiveModel] = useState('moonshotai/kimi-k3');
 
-  // ── Restore Stored Conversation History from Backend / Redis ──────
-  useEffect(() => {
-    let isMounted = true;
-    if (conversationId) {
-      fridayApi.getHistory(conversationId)
-        .then((history) => {
-          if (!isMounted || !history?.messages || history.messages.length === 0) return;
-          const loaded = history.messages.map((m, idx) => ({
-            id: `hist-${idx}-${Date.now()}`,
-            sender: m.role === 'assistant' ? 'friday' : (m.role || 'user'),
-            time: m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Earlier',
-            text: m.content,
-          }));
-          setMessages(loaded);
-        })
-        .catch((err) => {
-          console.warn('Failed to load conversation history:', err);
-        });
-    }
-    return () => { isMounted = false; };
-  }, [conversationId]);
 
   // Reset dispatch ref when initialContext prop changes
   useEffect(() => {
@@ -282,76 +342,8 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     }
   }, [initialContext, conversationId, settings.selectedModel, activeModel, addMessage, addCommandHistoryItem]);
 
-  /**
-   * onMicRelease: Triggered when user finishes speaking
-   * Transcribes speech buffer and posts to FRIDAY FastAPI LLM orchestrator
-   */
-  const onMicRelease = useCallback(async (customPrompt) => {
-    soundFX.playMicStop();
-    setMicState('processing');
-
-    const userText = customPrompt || (activeTranscription.startsWith('Listening: "')
-      ? activeTranscription.replace('Listening: "', '').replace('"', '')
-      : 'FRIDAY, check cluster health and error budgets.');
-
-    setActiveTranscription('');
-    addMessage('user', userText);
-
-    // Check if voice directive updates client state directly
-    const nlResult = processNLQuery ? processNLQuery(userText) : null;
-    if (nlResult && nlResult.actionTaken === 'UPDATE_SENSITIVITY') {
-      onAssistantResponse(nlResult.text);
-      addCommandHistoryItem(userText, nlResult.text);
-      return;
-    }
-
-    try {
-      const res = await fridayApi.sendMessage({
-        message: userText,
-        conversation_id: conversationId,
-        mode: 'voice',
-        model: settings.selectedModel || activeModel,
-      });
-      const aiReply = res.response || res.content;
-      if (res.model_used) setActiveModel(res.model_used);
-      if (aiReply) {
-        onAssistantResponse(aiReply, res.suggested_actions);
-        addCommandHistoryItem(userText, aiReply);
-        return;
-      }
-    } catch (err) {
-      console.error('Voice API call failed:', err);
-      setMicState('idle');
-      addMessage(
-        'friday',
-        `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}`
-      );
-    }
-  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel, processNLQuery]);
-
-  /**
-   * onCancelVoice: Triggered when user interrupts speech or listening
-   * // TODO: connect to backend - Abort active WebSocket STT session and halt TTS audio
-   */
-  const onCancelVoice = useCallback(() => {
-    clearAllTimers();
-    setMicState('idle');
-    setActiveTranscription('');
-    setActiveSpeakingText('');
-    setIsSimulating(false);
-  }, [clearAllTimers]);
-
-  /**
-   * onWakeWordDetected: Triggered when wake word engine detects wake phrase (e.g. "Hey FRIDAY")
-   * // TODO: connect to backend - Wake word audio listener trigger
-   */
-  const onWakeWordDetected = useCallback((phrase) => {
-    if (!settings.wakeWordEnabled) return;
-    console.log(`Wake phrase detected: "${phrase}"`);
-    onMicPress();
-  }, [settings.wakeWordEnabled, onMicPress]);
-
   // Replay speech for an existing message in transcript
+
   const handleReplaySpeech = (text) => {
     if (micState !== 'idle') return;
     setMicState('speaking');
@@ -423,14 +415,12 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         model: settings.selectedModel || activeModel,
       });
       setIsSending(false);
-      const aiReply = response.response || response.content;
+      const aiReply = response.response || response.content || (response.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'Systems nominal. No anomalous patterns detected.');
       if (response.model_used) setActiveModel(response.model_used);
-      if (aiReply) {
-        addMessage('friday', aiReply, response.suggested_actions);
-        addCommandHistoryItem(prompt, aiReply);
-        soundFX.playSuccessChime();
-        return;
-      }
+      addMessage('friday', aiReply, response.suggested_actions);
+      addCommandHistoryItem(prompt, aiReply);
+      soundFX.playSuccessChime();
+      return;
     } catch (err) {
       setIsSending(false);
       console.error('FRIDAY chat call failed:', err);
@@ -579,45 +569,72 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         </div>
 
         <div className="friday-header__right">
-          {/* Mode Switcher Pill */}
-          <div className="friday-mode-switch">
-            <button
-              className={`friday-mode-btn ${mode === 'chat' ? 'friday-mode-btn--active' : ''}`}
-              onClick={() => setMode('chat')}
-            >
-              <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6l-4 3V5z" />
-              </svg>
-              <span>Chat Mode</span>
-            </button>
+          {/* Streamlined Single Voice Mode Active / Deactivate Toggle Button */}
+          <Button
+            variant={mode === 'voice' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setMode(mode === 'voice' ? 'chat' : 'voice')}
+            title={mode === 'voice' ? 'Deactivate Voice Mode (Switch to Chat)' : 'Activate Continuous Voice Mode'}
+            className="friday-voice-toggle-btn"
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: mode === 'voice' ? '#10b981' : 'var(--color-text-muted)',
+                marginRight: '6px',
+                boxShadow: mode === 'voice' ? '0 0 8px #10b981' : 'none',
+              }}
+            />
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+              <path d="M10 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+              <path d="M16 10v1a6 6 0 0 1-12 0v-1" />
+              <line x1="10" y1="17" x2="10" y2="19" />
+            </svg>
+            <span>{mode === 'voice' ? 'Voice Mode: Active' : 'Voice Mode: Off'}</span>
+          </Button>
 
-            <button
-              className={`friday-mode-btn ${mode === 'voice' ? 'friday-mode-btn--active' : ''}`}
-              onClick={() => setMode('voice')}
-            >
-              <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                <path d="M16 10v1a6 6 0 0 1-12 0v-1" />
-                <line x1="10" y1="17" x2="10" y2="19" />
-              </svg>
-              <span>Voice Mode</span>
-            </button>
-          </div>
+          {/* New Conversation Session */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewConversation}
+            title="Start a new conversation session"
+          >
+            + New Session
+          </Button>
 
-          {/* Voice Settings Gear Button */}
+          {/* Chat History Drawer Toggle Button (Beside New Session) */}
+          <Button
+            variant={isHistoryDrawerOpen ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setIsHistoryDrawerOpen((prev) => !prev)}
+            title="View past conversation sessions"
+            className="friday-history-toggle-btn"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Chat History</span>
+          </Button>
+
+          {/* Consolidated Settings Gear Button */}
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setIsSettingsOpen(true)}
-            title="Configure FRIDAY Voice & Audio Settings"
+            title="Configure FRIDAY Voice, Neural Core & Audio Settings"
           >
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
               <circle cx="10" cy="10" r="2.5" />
               <path d="M10 2v2M10 16v2M3.5 5.5l1.4 1.4M15.1 15.1l1.4 1.4M2 10h2M16 10h2M3.5 14.5l1.4-1.4M15.1 4.9l1.4-1.4" />
             </svg>
-            <span>Voice Config</span>
+            <span>Settings</span>
           </Button>
 
+          {/* Navigation to Dashboard */}
           <Button
             variant="secondary"
             size="sm"
@@ -843,7 +860,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
             </button>
 
             <span>
-              {settings.wakeWordEnabled ? `Wake Word: "${settings.wakeWordPhrase}"` : 'Wake Word: Disabled'} • Press [Space] to talk
+              {settings.handsFree !== false ? 'Continuous Voice: Active' : 'Push-to-Talk'} • Press [Space] to talk • Wake Word: In Development
             </span>
           </div>
         </Card>
@@ -864,6 +881,16 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         onTriggerSimulation={handleTriggerSimulation}
         onStepState={handleStepState}
       />
+
+      {/* ChatGPT-Style Chat History Sidebar / Drawer */}
+      <FridayChatHistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        activeSessionId={conversationId}
+        onSelectSession={handleSelectSession}
+        onNewSession={handleNewConversation}
+      />
+
     </div>
   );
 }

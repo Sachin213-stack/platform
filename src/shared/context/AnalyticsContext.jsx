@@ -7,7 +7,7 @@ import {
   generateCorrelationData,
   generateForecastData,
 } from '../../modules/monitor/analytics/analyticsData';
-import { dashboardApi } from '../services/apiClient';
+import { dashboardApi, fridayApi } from '../services/apiClient';
 
 const AnalyticsContext = createContext(null);
 
@@ -31,23 +31,31 @@ export function AnalyticsProvider({ children }) {
   // ── 6. Live Ingested Telemetry Data ───────────────────────────
   const [hasLiveData, setHasLiveData] = useState(false);
   const [liveForecastCurve, setLiveForecastCurve] = useState(null);
+  const [baseCrashRisk, setBaseCrashRisk] = useState(4.2);
 
   // Fetch real analytics models and capacity data from backend
   const fetchLiveAnalytics = useCallback(async () => {
     try {
       const res = await dashboardApi.getAnalytics();
       if (!res) return;
-      if (res.has_live_data) {
+      if (res.has_live_data || (res.anomalies && res.anomalies.length > 0)) {
         setHasLiveData(true);
-        if (res.resource_runway) {
+        if (res.crash_risk_pct !== undefined && res.crash_risk_pct !== null) {
+          setBaseCrashRisk(Number(res.crash_risk_pct));
+        }
+        if (res.anomalies && Array.isArray(res.anomalies) && res.anomalies.length > 0) {
+          setAnomalies(res.anomalies);
+          setSelectedAnomalyId((prev) => prev || res.anomalies[0].id);
+        }
+        if (res.resource_runway_days) {
           setResourceRunway((prev) => ({
             ...prev,
-            runwayDays: res.resource_runway.runway_days ?? prev.runwayDays,
-            growthRatePct: res.resource_runway.growth_rate_pct ?? prev.growthRatePct,
-            bottleneck: res.resource_runway.bottleneck ?? prev.bottleneck,
-            status: res.resource_runway.status ?? prev.status,
-            exhaustionDate: res.resource_runway.exhaustion_date ?? prev.exhaustionDate,
-            recommendedAction: res.resource_runway.recommended_action ?? prev.recommendedAction,
+            runwayDays: res.resource_runway_days,
+            growthRatePct: res.growth_rate_pct ?? prev.growthRatePct,
+            bottleneck: res.bottleneck ?? prev.bottleneck,
+            status: res.resource_runway_days < 14 ? 'Critical' : 'Healthy',
+            exhaustionDate: res.exhaustion_date ?? prev.exhaustionDate,
+            recommendedAction: res.recommended_action ?? prev.recommendedAction,
           }));
         }
         if (res.model_metrics) {
@@ -55,12 +63,12 @@ export function AnalyticsProvider({ children }) {
             ...prev,
             precision: res.model_metrics.precision ?? prev.precision,
             recall: res.model_metrics.recall ?? prev.recall,
-            f1Score: res.model_metrics.f1_score ?? prev.f1Score,
-            datasetVectors: res.model_metrics.dataset_vectors ?? prev.datasetVectors,
+            f1Score: res.model_metrics.f1Score ?? prev.f1Score,
+            datasetVectors: res.model_metrics.datasetVectors ?? prev.datasetVectors,
           }));
         }
-        if (res.forecast_curve && res.forecast_curve.points) {
-          setLiveForecastCurve(res.forecast_curve.points);
+        if (res.forecast_curve && (res.forecast_curve.points || res.forecast_curve.yhat)) {
+          setLiveForecastCurve(res.forecast_curve.points || res.forecast_curve);
         }
       }
     } catch (e) {
@@ -71,9 +79,6 @@ export function AnalyticsProvider({ children }) {
   useEffect(() => {
     fetchLiveAnalytics();
   }, [fetchLiveAnalytics]);
-
-  // ── 7. Base Crash Risk Probability (4.2% nominal) ─────────────
-  const baseCrashRisk = 4.2;
 
   // Compute live crash risk factoring in What-If spike and sensitivity
   const liveCrashRisk = useMemo(() => {
@@ -105,7 +110,8 @@ export function AnalyticsProvider({ children }) {
   }, [anomalies, selectedAnomalyId]);
 
   // ── 7. Action Execution & Anomaly Resolution ───────────────────
-  const applyRecommendation = useCallback((anomalyId, actionName) => {
+  const applyRecommendation = useCallback(async (anomalyId, actionName) => {
+    // 1. Optimistic UI update
     setAnomalies((prev) =>
       prev.map((a) => {
         if (a.id === anomalyId) {
@@ -119,7 +125,21 @@ export function AnalyticsProvider({ children }) {
         return a;
       })
     );
-  }, []);
+
+    // 2. Dispatch real mitigation execution to backend to resolve anomaly in DB & record in audit ledger
+    try {
+      const target = anomalies.find((a) => a.id === anomalyId);
+      const svc = (target?.service || 'checkout-v2').replace(/[^a-zA-Z0-9_-]/g, '') || 'checkout-v2';
+      await fridayApi.executeAction({
+        action_type: 'scale_service',
+        service: svc,
+        params: { replicas: 8 },
+      });
+      fetchLiveAnalytics();
+    } catch (e) {
+      console.warn('Real mitigation dispatch error:', e);
+    }
+  }, [anomalies, fetchLiveAnalytics]);
 
   // ── 8. Natural Language Analytics Query Engine (For FRIDAY AI) ─
   const processNLQuery = useCallback(

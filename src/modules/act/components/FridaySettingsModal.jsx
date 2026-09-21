@@ -95,18 +95,24 @@ export function FridaySettingsModal({
           </div>
         </div>
 
-        {/* Section 1: Wake Word */}
+        {/* Section 1: Wake Engine & Hands-Free */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <h4 style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--color-accent-light)', letterSpacing: '0.05em' }}>
-            Wake Engine
-          </h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--color-accent-light)', letterSpacing: '0.05em' }}>
+              Conversational Engine
+            </h4>
+            <Badge variant="amber" size="sm">Wake Word in Development</Badge>
+          </div>
           <ToggleRow
-            title="Hands-Free Wake Word"
-            description={`Activate FRIDAY automatically when you say "${settings.wakeWordPhrase}".`}
-            checked={settings.wakeWordEnabled}
-            onChange={(val) => onUpdateSettings({ wakeWordEnabled: val })}
-            badge={<Badge variant="violet" size="sm">Neural VAD</Badge>}
+            title="Continuous Hands-Free Dialogue"
+            description="Keep the mic open for follow-up responses without pressing Spacebar after each answer."
+            checked={settings.handsFree !== false}
+            onChange={(val) => onUpdateSettings({ handsFree: val })}
+            badge={<Badge variant="teal" size="sm">Active</Badge>}
           />
+          <div style={{ padding: 'var(--space-2) var(--space-3)', background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--color-border-subtle)', fontSize: '11px', color: 'var(--color-text-tertiary)', lineHeight: '1.4' }}>
+            ⚠️ <strong>Neural Wake Word (&quot;Hey FRIDAY&quot;):</strong> We are actively working on this component. Currently, activate voice via Spacebar or the mic orb, then enjoy uninterrupted continuous hands-free dialogue.
+          </div>
         </div>
 
         {/* Section 2: Voice Model Selection */}

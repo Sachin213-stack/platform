@@ -87,6 +87,86 @@ export function getBusinessTierMetrics(businessType = 'ecommerce', isLive = true
         },
       ];
 
+    case 'fintech':
+      return [
+        {
+          id: 'tx-velocity',
+          label: 'Settlement Velocity',
+          value: '1,840',
+          unit: 'tx/s',
+          delta: '+14.6%',
+          deltaType: 'positive',
+          progress: 84,
+          state: isLive ? 'live' : 'stale',
+          subtext: 'ISO-8583 settlement wire gateway',
+          status: 'healthy',
+        },
+        {
+          id: 'fraud-rate',
+          label: 'AI AML / Fraud Screen',
+          value: '0.02%',
+          unit: '%',
+          delta: '-0.01%',
+          deltaType: 'positive',
+          progress: 8,
+          state: isLive ? 'live' : 'stale',
+          subtext: 'Real-time anomaly scoring',
+          status: 'healthy',
+        },
+        {
+          id: 'ledger-sync',
+          label: 'Ledger Consensus Latency',
+          value: '18ms',
+          unit: 'ms',
+          delta: '-4.2%',
+          deltaType: 'positive',
+          progress: 18,
+          state: isLive ? 'live' : 'stale',
+          subtext: '99.999% consensus quorum',
+          status: 'healthy',
+        },
+      ];
+
+    case 'marketplace':
+      return [
+        {
+          id: 'merchant-orders',
+          label: 'Merchant Gross Orders',
+          value: '142',
+          unit: 'orders/m',
+          delta: '+11.8%',
+          deltaType: 'positive',
+          progress: 74,
+          state: isLive ? 'live' : 'stale',
+          subtext: 'Cross-vendor fulfillment',
+          status: 'healthy',
+        },
+        {
+          id: 'vendor-payout',
+          label: 'Payout Disbursement SLA',
+          value: '99.94%',
+          unit: '%',
+          delta: '+0.05%',
+          deltaType: 'positive',
+          progress: 99,
+          state: isLive ? 'live' : 'stale',
+          subtext: 'Automated Stripe Connect batching',
+          status: 'healthy',
+        },
+        {
+          id: 'clicks-min',
+          label: 'Catalog Search Velocity',
+          value: '4,280',
+          unit: 'queries/m',
+          delta: '+8.4%',
+          deltaType: 'positive',
+          progress: 71,
+          state: isLive ? 'live' : 'stale',
+          subtext: 'OpenSearch index cluster',
+          status: 'healthy',
+        },
+      ];
+
     case 'ecommerce':
     default:
       return [
@@ -143,9 +223,29 @@ export function BusinessMetricsRow({
   const metrics = React.useMemo(() => {
     if (!hasLiveData || !liveTierMetrics) return baseMetrics;
     return baseMetrics.map((m) => {
-      if (m.id === 'orders-min' || m.id === 'mrr-velocity') {
-        const val = liveTierMetrics.mrr_velocity !== undefined ? String(liveTierMetrics.mrr_velocity) : m.value;
+      if (m.id === 'orders-min') {
+        const val = liveTierMetrics.orders_min !== undefined ? String(liveTierMetrics.orders_min) : m.value;
         return { ...m, value: val, subtext: 'Calculated from live transaction events', state: 'live' };
+      }
+      if (m.id === 'mrr-velocity') {
+        const val = liveTierMetrics.mrr_velocity !== undefined ? String(liveTierMetrics.mrr_velocity) : m.value;
+        return { ...m, value: val, subtext: 'Calculated from live signup events', state: 'live' };
+      }
+      if (m.id === 'tx-velocity') {
+        const val = liveTierMetrics.tx_velocity !== undefined ? Number(liveTierMetrics.tx_velocity).toLocaleString() : m.value;
+        return { ...m, value: val, subtext: 'Live settlement throughput', state: 'live' };
+      }
+      if (m.id === 'fraud-rate') {
+        const val = liveTierMetrics.fraud_rate !== undefined ? `${liveTierMetrics.fraud_rate}%` : m.value;
+        return { ...m, value: val, subtext: 'Real-time AML screen', state: 'live' };
+      }
+      if (m.id === 'ledger-sync') {
+        const val = liveTierMetrics.ledger_latency !== undefined ? `${liveTierMetrics.ledger_latency}ms` : m.value;
+        return { ...m, value: val, subtext: 'Consensus quorum ping', state: 'live' };
+      }
+      if (m.id === 'merchant-orders') {
+        const val = liveTierMetrics.merchant_orders !== undefined ? String(liveTierMetrics.merchant_orders) : m.value;
+        return { ...m, value: val, subtext: 'Multi-vendor gross orders', state: 'live' };
       }
       if (m.id === 'churn-risk' || m.id === 'cart-abandon') {
         const val = liveTierMetrics.auth_failure_rate !== undefined ? `${liveTierMetrics.auth_failure_rate}%` : m.value;
@@ -158,6 +258,10 @@ export function BusinessMetricsRow({
       if (m.id === 'streams-min') {
         const val = liveTierMetrics.streams_min !== undefined ? Number(liveTierMetrics.streams_min).toLocaleString() : m.value;
         return { ...m, value: val, subtext: 'Live stream ingestion rate', state: 'live' };
+      }
+      if (m.id === 'clicks-min') {
+        const val = liveTierMetrics.clicks_min !== undefined ? Number(liveTierMetrics.clicks_min).toLocaleString() : m.value;
+        return { ...m, value: val, subtext: 'Live catalog event rate', state: 'live' };
       }
       return m;
     });

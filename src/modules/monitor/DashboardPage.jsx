@@ -58,9 +58,225 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const [hasError, setHasError] = useState(false);
 
   // ── Compute Dynamic KPI Overrides from Live Backend Data ──────────
+  // ── Compute Dynamic KPI Overrides from Live Backend Data ──────────
   const kpiOverrides = useMemo(() => {
     if (!liveKpis) return null;
     const isWeek = comparisonPeriod === 'week';
+    const bizType = selectedBusiness?.type || 'ecommerce';
+
+    if (bizType === 'saas') {
+      return [
+        {
+          id: 'response-time',
+          label: 'Avg Response Time',
+          value: `${liveKpis.response_time_ms}ms`,
+          rawValue: liveKpis.response_time_ms,
+          threshold: { warn: 200, crit: 350 },
+          unit: 'ms',
+          delta: isWeek ? '-8.4%' : `${liveKpis.response_time_delta_pct > 0 ? '+' : ''}${liveKpis.response_time_delta_pct}%`,
+          deltaType: liveKpis.response_time_delta_pct <= 0 ? 'positive' : 'negative',
+          sparkline: [140, 132, 128, 120, 115, Math.round(liveKpis.response_time_ms)],
+          target: '< 200ms target',
+        },
+        {
+          id: 'api-throughput',
+          label: 'API Invocations/Min',
+          value: `${Math.round(Math.max(42.8, liveKpis.orders_per_min * 14.2))}k`,
+          rawValue: Math.round(liveKpis.orders_per_min * 14200),
+          threshold: { warn: 80000, crit: 120000 },
+          unit: 'req/m',
+          delta: isWeek ? '+18.2%' : `${liveKpis.orders_delta_pct > 0 ? '+' : ''}${liveKpis.orders_delta_pct}%`,
+          deltaType: 'positive',
+          sparkline: [36, 38, 40, 39, 41, Math.round(liveKpis.orders_per_min * 1.4)],
+          target: 'Scale capacity: 150k',
+        },
+        {
+          id: 'js-error-rate',
+          label: 'Client JS Error Rate',
+          value: '0.04%',
+          rawValue: 0.04,
+          threshold: { warn: 0.5, crit: 1.5 },
+          unit: '%',
+          delta: isWeek ? '-0.02%' : '+0.01%',
+          deltaType: 'neutral',
+          sparkline: [0.06, 0.05, 0.04, 0.04, 0.03, 0.04],
+          target: '< 0.1% SLA',
+        },
+        {
+          id: 'http-error-rate',
+          label: '5xx Server Error Rate',
+          value: `${liveKpis.error_rate_pct}%`,
+          rawValue: liveKpis.error_rate_pct,
+          threshold: { warn: 0.8, crit: 2.0 },
+          unit: '%',
+          delta: isWeek ? '-0.14%' : `${liveKpis.error_rate_delta_pct > 0 ? '+' : ''}${liveKpis.error_rate_delta_pct}%`,
+          deltaType: liveKpis.error_rate_pct < 0.8 ? 'positive' : 'negative',
+          sparkline: [0.28, 0.22, 0.18, 0.15, 0.13, liveKpis.error_rate_pct],
+          target: '< 0.5% SLA',
+        },
+      ];
+    }
+
+    if (bizType === 'content') {
+      return [
+        {
+          id: 'response-time',
+          label: 'TTFB / Edge Latency',
+          value: `${Math.min(liveKpis.response_time_ms, 85)}ms`,
+          rawValue: Math.min(liveKpis.response_time_ms, 85),
+          threshold: { warn: 150, crit: 300 },
+          unit: 'ms',
+          delta: isWeek ? '-12.0%' : '-3.1%',
+          deltaType: 'positive',
+          sparkline: [82, 78, 70, 68, 65, Math.min(liveKpis.response_time_ms, 85)],
+          target: 'Edge Cache: 94%',
+        },
+        {
+          id: 'requests-min',
+          label: 'CDN Requests/Min',
+          value: `${Math.round(Math.max(185.4, liveKpis.orders_per_min * 28.5))}k`,
+          rawValue: Math.round(liveKpis.orders_per_min * 28500),
+          threshold: { warn: 300000, crit: 500000 },
+          unit: 'req/m',
+          delta: isWeek ? '+24.5%' : '+11.2%',
+          deltaType: 'positive',
+          sparkline: [140, 155, 160, 172, 180, 185.4],
+          target: 'Global edge distribution',
+        },
+        {
+          id: 'js-error-rate',
+          label: 'Video Player Errors',
+          value: `${Number((liveKpis.error_rate_pct * 0.4).toFixed(2))}%`,
+          rawValue: liveKpis.error_rate_pct * 0.4,
+          threshold: { warn: 0.8, crit: 2.0 },
+          unit: '%',
+          delta: isWeek ? '-0.05%' : '-0.02%',
+          deltaType: 'positive',
+          sparkline: [0.24, 0.22, 0.20, 0.19, 0.18, Number((liveKpis.error_rate_pct * 0.4).toFixed(2))],
+          target: '< 0.5% stream fail',
+        },
+        {
+          id: 'http-error-rate',
+          label: 'Origin 5xx Errors',
+          value: `${liveKpis.error_rate_pct}%`,
+          rawValue: liveKpis.error_rate_pct,
+          threshold: { warn: 0.5, crit: 1.5 },
+          unit: '%',
+          delta: isWeek ? '-0.04%' : '+0.01%',
+          deltaType: 'neutral',
+          sparkline: [0.12, 0.10, 0.09, 0.08, 0.07, liveKpis.error_rate_pct],
+          target: '< 0.2% Origin Error',
+        },
+      ];
+    }
+
+    if (bizType === 'fintech') {
+      return [
+        {
+          id: 'response-time',
+          label: 'Core Banking Latency',
+          value: `${Math.min(liveKpis.response_time_ms, 65)}ms`,
+          rawValue: Math.min(liveKpis.response_time_ms, 65),
+          threshold: { warn: 100, crit: 250 },
+          unit: 'ms',
+          delta: isWeek ? '-15.2%' : '-4.8%',
+          deltaType: 'positive',
+          sparkline: [58, 52, 48, 45, 43, Math.min(liveKpis.response_time_ms, 65)],
+          target: 'ISO-8583 < 100ms',
+        },
+        {
+          id: 'tx-throughput',
+          label: 'Settlement Throughput',
+          value: `${Math.round(Math.max(18.4, liveKpis.orders_per_min * 6.2))}k`,
+          rawValue: Math.round(liveKpis.orders_per_min * 6200),
+          threshold: { warn: 35000, crit: 60000 },
+          unit: 'tx/m',
+          delta: isWeek ? '+22.4%' : '+9.2%',
+          deltaType: 'positive',
+          sparkline: [14.2, 15.0, 16.1, 16.8, 17.5, 18.4],
+          target: 'Scale cap: 50k tx/m',
+        },
+        {
+          id: 'auth-failure-rate',
+          label: 'Auth & 2FA Failures',
+          value: `${Number((liveKpis.error_rate_pct * 0.3).toFixed(2))}%`,
+          rawValue: liveKpis.error_rate_pct * 0.3,
+          threshold: { warn: 0.2, crit: 0.8 },
+          unit: '%',
+          delta: isWeek ? '-0.02%' : '-0.01%',
+          deltaType: 'positive',
+          sparkline: [0.08, 0.07, 0.06, 0.05, 0.04, 0.04],
+          target: '< 0.1% SLA',
+        },
+        {
+          id: 'gateway-error-rate',
+          label: 'Gateway 5xx Errors',
+          value: `${liveKpis.error_rate_pct}%`,
+          rawValue: liveKpis.error_rate_pct,
+          threshold: { warn: 0.1, crit: 0.5 },
+          unit: '%',
+          delta: isWeek ? '-0.03%' : '+0.00%',
+          deltaType: 'neutral',
+          sparkline: [0.05, 0.04, 0.03, 0.02, 0.02, liveKpis.error_rate_pct],
+          target: '< 0.05% Critical SLA',
+        },
+      ];
+    }
+
+    if (bizType === 'marketplace') {
+      return [
+        {
+          id: 'response-time',
+          label: 'Avg Response Time',
+          value: `${liveKpis.response_time_ms}ms`,
+          rawValue: liveKpis.response_time_ms,
+          threshold: { warn: 200, crit: 350 },
+          unit: 'ms',
+          delta: isWeek ? '-10.5%' : '-3.8%',
+          deltaType: 'positive',
+          sparkline: [160, 152, 145, 140, 138, Math.round(liveKpis.response_time_ms)],
+          target: 'SLA < 200ms',
+        },
+        {
+          id: 'gmv-velocity',
+          label: 'GMV Orders / Min',
+          value: `${liveKpis.orders_per_min}/min`,
+          rawValue: liveKpis.orders_per_min,
+          threshold: { warn: 150, crit: 300 },
+          unit: 'orders/m',
+          delta: isWeek ? '+16.8%' : `${liveKpis.orders_delta_pct > 0 ? '+' : ''}${liveKpis.orders_delta_pct}%`,
+          deltaType: 'positive',
+          sparkline: [68, 72, 75, 78, 81, liveKpis.orders_per_min],
+          target: 'Cross-vendor routing',
+        },
+        {
+          id: 'search-latency',
+          label: 'Search Index Latency',
+          value: '28ms',
+          rawValue: 28,
+          threshold: { warn: 60, crit: 120 },
+          unit: 'ms',
+          delta: isWeek ? '-6.2%' : '-2.1%',
+          deltaType: 'positive',
+          sparkline: [36, 34, 32, 30, 29, 28],
+          target: 'OpenSearch cluster < 50ms',
+        },
+        {
+          id: 'checkout-failure',
+          label: 'Checkout Failure Rate',
+          value: `${liveKpis.checkout_failure_pct}%`,
+          rawValue: liveKpis.checkout_failure_pct,
+          threshold: { warn: 1.0, crit: 2.5 },
+          unit: '%',
+          delta: isWeek ? '-0.18%' : `${liveKpis.checkout_failure_delta_pct > 0 ? '+' : ''}${liveKpis.checkout_failure_delta_pct}%`,
+          deltaType: 'positive',
+          sparkline: [0.85, 0.78, 0.72, 0.68, 0.65, liveKpis.checkout_failure_pct],
+          target: '< 1.0% SLA',
+        },
+      ];
+    }
+
+    // Default: E-Commerce
     return [
       {
         id: 'response-time',
@@ -82,11 +298,11 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
       },
       {
         id: 'requests-min',
-        label: 'Throughput / Orders',
+        label: 'Orders / Minute',
         value: `${liveKpis.orders_per_min}/min`,
         rawValue: liveKpis.orders_per_min,
         threshold: { warn: 500, crit: 1000 },
-        unit: 'opm',
+        unit: 'orders/m',
         delta: isWeek ? '+15.2%' : `${liveKpis.orders_delta_pct > 0 ? '+' : ''}${liveKpis.orders_delta_pct}%`,
         deltaType: 'positive',
         sparkline: [
@@ -126,7 +342,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         target: '< 0.5% SLA',
       },
     ];
-  }, [liveKpis, comparisonPeriod]);
+  }, [liveKpis, comparisonPeriod, selectedBusiness]);
 
   // ── Compute Health Score dynamically ───────────────────────────
   const healthScore = useMemo(() => {

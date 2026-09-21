@@ -2,6 +2,9 @@ import { useState, useCallback, useEffect } from 'react';
 import './AppShell.css';
 import { useAnalytics } from '../context/AnalyticsContext';
 import { getStoredUser, healthApi, userApi } from '../services/apiClient';
+import { FridayVoiceOverlay } from '../../modules/act/components/FridayVoiceOverlay';
+import { FridayFloatingCompanion } from '../../modules/act/components/FridayFloatingCompanion';
+
 
 /* ── SVG Icons (inline, no external deps) ───────────────────── */
 const Icons = {
@@ -135,6 +138,11 @@ export default function AppShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentNav, setCurrentNav] = useState(activeNav);
 
+  // Global FRIDAY Voice Assistant State
+  const [isVoiceOverlayOpen, setIsVoiceOverlayOpen] = useState(false);
+  const [isCompanionMinimized, setIsCompanionMinimized] = useState(false);
+  const { liveCrashRisk, liveHeadroom, activeAnomaliesCount, anomalies } = useAnalytics();
+
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const toggleCollapse = useCallback(() => setSidebarCollapsed((c) => !c), []);
@@ -148,12 +156,16 @@ export default function AppShell({
     [onNavChange, closeSidebar]
   );
 
-  /* ── Keyboard shortcut: Ctrl+B to toggle collapse ────────── */
+  /* ── Keyboard shortcut: Ctrl+B to toggle collapse & Alt+V for Voice Co-Pilot ── */
   useEffect(() => {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
         e.preventDefault();
         toggleCollapse();
+      }
+      if ((e.altKey && e.key.toLowerCase() === 'v') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v')) {
+        e.preventDefault();
+        setIsVoiceOverlayOpen((prev) => !prev);
       }
       if (e.key === 'Escape' && sidebarOpen) {
         closeSidebar();
@@ -220,10 +232,57 @@ export default function AppShell({
         <main className="app-shell__main" id="main-content" key={currentNav}>
           {children || <ContentPlaceholder />}
         </main>
+
+        {/* Global FRIDAY Voice Assistant Floating Button & Modals */}
+        {!isVoiceOverlayOpen && !isCompanionMinimized && currentNav !== 'act' && (
+          <button
+            type="button"
+            className="app-shell-global-voice-pill"
+            onClick={() => setIsVoiceOverlayOpen(true)}
+            title="Open FRIDAY AI Voice Companion (Alt+V or Ctrl+Shift+V)"
+            aria-label="Open FRIDAY Voice Companion"
+          >
+            <span className="app-shell-voice-pill-pulse" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" x2="12" y1="19" y2="22" />
+            </svg>
+            <span className="app-shell-voice-pill-label">Talk to FRIDAY</span>
+          </button>
+        )}
+
+        <FridayVoiceOverlay
+          isOpen={isVoiceOverlayOpen}
+          onClose={() => {
+            setIsVoiceOverlayOpen(false);
+            setIsCompanionMinimized(false);
+          }}
+          onMinimize={() => {
+            setIsVoiceOverlayOpen(false);
+            setIsCompanionMinimized(true);
+          }}
+          activeRoute={currentNav}
+          analyticsContext={{
+            liveCrashRisk,
+            liveHeadroom,
+            activeAnomaliesCount,
+            anomalies,
+          }}
+        />
+
+        <FridayFloatingCompanion
+          isOpen={isCompanionMinimized}
+          onExpand={() => {
+            setIsCompanionMinimized(false);
+            setIsVoiceOverlayOpen(true);
+          }}
+        />
       </div>
     </div>
   );
 }
+
 
 /* ════════════════════════════════════════════════════════════════
    DEFAULT SUB-COMPONENTS (replaced by real ones in later steps)

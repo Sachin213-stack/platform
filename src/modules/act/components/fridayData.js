@@ -1,6 +1,8 @@
 export const INITIAL_SETTINGS = {
-  wakeWordEnabled: true,
-  wakeWordPhrase: 'Hey FRIDAY',
+  handsFree: true,
+  wakeWordEnabled: false,
+  wakeWordPhrase: 'Hey FRIDAY (In Development)',
+  wakeWordStatus: 'in_development',
   selectedModel: 'moonshotai/kimi-k3',
   selectedVoice: 'friday-core-female',
   speechRate: 1.0,
@@ -23,27 +25,31 @@ export const AVAILABLE_LLM_MODELS = [
 export const AVAILABLE_VOICES = [
   {
     id: 'friday-core-female',
-    name: 'FRIDAY Core (Neural UK Female)',
-    description: 'Crisp British female tone with precise technical prosody',
-    badge: 'Flagship Neural',
-  },
-  {
-    id: 'friday-echo-male',
-    name: 'FRIDAY Echo (Deep US Male)',
-    description: 'Resonant and authoritative engineering lead voice',
-    badge: 'Neural HD',
+    edgeVoice: 'en-US-AriaNeural',
+    name: 'FRIDAY Aria (Conversational US Female)',
+    description: 'Warm, highly expressive companion voice inspired by ChatGPT',
+    badge: 'ChatGPT Style',
   },
   {
     id: 'friday-nova-neutral',
-    name: 'FRIDAY Nova (Crisp Neutral)',
-    description: 'Fast, concise synthetic voice optimized for ops briefings',
-    badge: 'Turbo Gen-4',
+    edgeVoice: 'en-GB-SoniaNeural',
+    name: 'FRIDAY Sonia (Elite British Female)',
+    description: 'Crisp British female AI-CTO tone with razor-sharp prosody',
+    badge: 'Classic FRIDAY',
+  },
+  {
+    id: 'friday-echo-male',
+    edgeVoice: 'en-US-GuyNeural',
+    name: 'FRIDAY Guy (Deep US Engineering Male)',
+    description: 'Calm, authoritative senior engineering partner voice',
+    badge: 'Senior Co-Pilot',
   },
   {
     id: 'friday-solis-female',
-    name: 'FRIDAY Solis (Adaptive Natural)',
-    description: 'Warm natural cadence with contextual inflection',
-    badge: 'Natural Pro',
+    edgeVoice: 'hi-IN-SwaraNeural',
+    name: 'FRIDAY Swara (Natural Indian & Hinglish)',
+    description: 'Fluent English and Hinglish technical partner with natural cadence',
+    badge: 'Hinglish Pro',
   },
 ];
 

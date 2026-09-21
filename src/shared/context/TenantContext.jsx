@@ -21,9 +21,11 @@ export function TenantProvider({ children }) {
           typeLabel: (stored.business_type || 'ecommerce').toUpperCase(),
           tierLabel: 'Production',
           region: 'us-east-1',
+          domain: stored.domain || `${(stored.business_name || 'org').toLowerCase().replace(/\s+/g, '-')}.io`,
           ops_email: stored.ops_email,
         };
-        return [userBiz];
+        const others = BUSINESS_PROFILES.filter((b) => b.id !== userBiz.id);
+        return [userBiz, ...others];
       }
       const saved = localStorage.getItem(TENANTS_STORAGE_KEY);
       if (saved) {
