@@ -478,6 +478,54 @@ export const ingestionApi = {
 };
 
 // ==========================================
+// Logs & Observability API
+// ==========================================
+export const logsApi = {
+  async queryLogs({ timeFrom, timeTo, logType, level, source, search, limit = 50, offset = 0 } = {}) {
+    const params = new URLSearchParams();
+    if (timeFrom) params.append('time_from', typeof timeFrom === 'string' ? timeFrom : timeFrom.toISOString());
+    if (timeTo) params.append('time_to', typeof timeTo === 'string' ? timeTo : timeTo.toISOString());
+    if (logType && logType !== 'all') params.append('log_type', logType);
+    if (level && level !== 'all') params.append('level', level);
+    if (source && source !== 'all') params.append('source', source);
+    if (search && search.trim()) params.append('search', search.trim());
+    params.append('limit', String(limit));
+    params.append('offset', String(offset));
+
+    const qs = params.toString();
+    return await request(`/logs${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  async getLogsAroundAnomaly(anomalyId) {
+    return await request(`/logs/around-anomaly/${encodeURIComponent(anomalyId)}`, { method: 'GET' });
+  },
+
+  async getSources() {
+    return await request('/logs/sources', { method: 'GET' });
+  },
+
+  async ingestLogs(logs) {
+    return await request('/logs', {
+      method: 'POST',
+      body: JSON.stringify({ logs }),
+    });
+  },
+
+  getStreamUrl({ level, source, logType, search } = {}) {
+    const token = getAccessToken();
+    const params = new URLSearchParams();
+    if (token) params.append('token', token);
+    if (level && level !== 'all') params.append('level', level);
+    if (source && source !== 'all') params.append('source', source);
+    if (logType && logType !== 'all') params.append('log_type', logType);
+    if (search && search.trim()) params.append('search', search.trim());
+
+    const qs = params.toString();
+    return `${API_BASE}/logs/stream${qs ? `?${qs}` : ''}`;
+  },
+};
+
+// ==========================================
 // Observability / Health Probe
 // ==========================================
 export const healthApi = {
@@ -492,5 +540,7 @@ export default {
   dashboard: dashboardApi,
   friday: fridayApi,
   ingestion: ingestionApi,
+  logs: logsApi,
   health: healthApi,
 };
+

@@ -7,6 +7,7 @@ export function RootCauseBreakdown({
   anomaly,
   onApplyRecommendation,
   onAskFriday,
+  onViewLogs,
 }) {
   if (!anomaly) {
     return (
@@ -91,6 +92,19 @@ export function RootCauseBreakdown({
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               <span>Ask FRIDAY</span>
+            </button>
+          )}
+          {onViewLogs && (
+            <button
+              onClick={() => onViewLogs(anomaly)}
+              className="analytics-view-logs-btn"
+              title="View correlated logs for this anomaly"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <polyline points="6 9 10 13 14 9" />
+              </svg>
+              <span>View Logs</span>
             </button>
           )}
         </div>

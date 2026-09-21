@@ -102,6 +102,31 @@
   box-shadow: 0 0 10px var(--color-accent-glow);
 }
 
+/* ── View Logs Inline Button ───────────────────────────────── */
+.analytics-view-logs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  font-weight: var(--weight-medium);
+  color: #38bdf8;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.analytics-view-logs-btn:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+
 /* ── Anomaly Timeline & Log ─────────────────────────────────── */
 .analytics-timeline-card {
   background: var(--color-bg-card);

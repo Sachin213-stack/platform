@@ -725,6 +725,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
               decisionLogs={decisionLogs}
               onApplyRecommendation={handleApplyRecommendation}
               onOpenFridayWithContext={handleOpenFridayWithContext}
+              onViewLogs={(ano) => onNavigate && onNavigate('logs', { anomalyId: ano.id, anomaly: ano })}
               onNavigateToAuditLog={() => onNavigate && onNavigate('audit-logs')}
             />
           </div>

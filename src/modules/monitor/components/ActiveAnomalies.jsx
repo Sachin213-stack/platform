@@ -9,6 +9,7 @@ export function ActiveAnomalies({
   decisionLogs = [],
   onApplyRecommendation,
   onOpenFridayWithContext,
+  onViewLogs,
   onNavigateToAuditLog,
 }) {
   const [telemetryOpen, setTelemetryOpen] = useState(false);
@@ -156,6 +157,20 @@ export function ActiveAnomalies({
                           }
                         >
                           Consult FRIDAY AI →
+                        </Button>
+
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => onViewLogs && onViewLogs(ano)}
+                          icon={
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="2" y="3" width="20" height="14" rx="2" />
+                              <polyline points="6 9 10 13 14 9" />
+                            </svg>
+                          }
+                        >
+                          View Logs →
                         </Button>
                       </div>
                     </div>

@@ -79,6 +79,13 @@ const Icons = {
       <circle cx="10" cy="14.5" r="0.5" fill="currentColor" />
     </svg>
   ),
+  terminal: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="16" height="14" rx="2" />
+      <polyline points="5 8 8 10 5 12" />
+      <line x1="10" y1="12" x2="14" y2="12" />
+    </svg>
+  ),
 };
 
 /* Navigation items with sections */
@@ -88,8 +95,10 @@ const NAV_SECTIONS = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
       { id: 'analytics', label: 'Analytics', icon: Icons.analytics },
+      { id: 'logs', label: 'Logs', icon: Icons.terminal, badge: 'Live' },
     ],
   },
+
   {
     label: 'Act',
     items: [

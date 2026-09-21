@@ -5,6 +5,7 @@ import SettingsPage from './pages/settings/SettingsPage';
 import AnalyticsPage from './modules/monitor/AnalyticsPage';
 import FridayAIPage from './modules/act/FridayAIPage';
 import AuditLogPage from './modules/detect/AuditLogPage';
+import LogsPage from './modules/monitor/logs/LogsPage';
 import BillingPage from './pages/billing/BillingPage';
 import LandingPage from './pages/landing/LandingPage';
 import { ToastProvider, useToast } from './shared/components/Toast';
@@ -152,6 +153,8 @@ export function AppContent() {
         return 'Operations Control Center';
       case 'analytics':
         return 'Analytics & Forecasting';
+      case 'logs':
+        return 'System & Application Logs';
       case 'friday-ai':
         return 'FRIDAY AI Assistant';
       case 'billing':
@@ -228,6 +231,13 @@ export function AppContent() {
           {currentNav === 'analytics' && (
             <AnalyticsPage
               onNavigate={handleNavigate}
+            />
+          )}
+
+          {currentNav === 'logs' && (
+            <LogsPage
+              onNavigate={handleNavigate}
+              initialContext={navContext}
             />
           )}
 

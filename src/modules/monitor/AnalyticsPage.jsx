@@ -136,6 +136,13 @@ export default function AnalyticsPage({ onNavigate }) {
     }, 800);
   };
 
+  const handleViewLogs = (ano) => {
+    if (onNavigate) {
+      onNavigate('logs', { anomalyId: ano?.id, anomaly: ano });
+    }
+  };
+
+
   return (
     <div className="analytics-page-container">
       {/* ── 1. Header & Studio Overview ── */}
@@ -186,6 +193,7 @@ export default function AnalyticsPage({ onNavigate }) {
         onSelectAnomaly={setSelectedAnomalyId}
         onApplyRecommendation={handleOpenRecommendationConfirm}
         onAskFriday={handleAskFriday}
+        onViewLogs={handleViewLogs}
       />
 
       {/* ── 7. Root Cause Breakdown (Interactive Attribution) ── */}
@@ -193,6 +201,7 @@ export default function AnalyticsPage({ onNavigate }) {
         anomaly={selectedAnomaly}
         onApplyRecommendation={handleOpenRecommendationConfirm}
         onAskFriday={handleAskFriday}
+        onViewLogs={handleViewLogs}
       />
 
       {/* ── 8. Action Confirmation Modal ── */}
