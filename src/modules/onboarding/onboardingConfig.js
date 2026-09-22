@@ -1,4 +1,4 @@
-import { ingestionApi, dashboardApi } from '../../shared/services/apiClient';
+import { ingestionApi, dashboardApi } from '../../shared/services/apiClient.js';
 
 /**
  * AI-CTO Onboarding Wizard Configuration & Helper Utilities
