@@ -213,18 +213,24 @@ export function ActiveAnomalies({
 
           {telemetryOpen && (
             <div className="collapsible-drawer__body">
-              <div className="telemetry-events-list">
-                {telemetryEvents.map((evt) => (
-                  <div key={evt.id} className="telemetry-event-row">
-                    <span className="telemetry-event-row__time">{evt.time}</span>
-                    <Badge variant={evt.level === 'warning' ? 'warning' : 'neutral'} size="sm">
-                      {evt.type}
-                    </Badge>
-                    <span className="telemetry-event-row__msg">{evt.message}</span>
-                    <span className="telemetry-event-row__latency">{evt.latency}</span>
-                  </div>
-                ))}
-              </div>
+              {telemetryEvents.length === 0 ? (
+                <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+                  No telemetry events recorded yet. Install tracking snippet or send HTTP events to view real-time probes.
+                </div>
+              ) : (
+                <div className="telemetry-events-list">
+                  {telemetryEvents.map((evt) => (
+                    <div key={evt.id} className="telemetry-event-row">
+                      <span className="telemetry-event-row__time">{evt.time}</span>
+                      <Badge variant={evt.level === 'warning' ? 'warning' : 'neutral'} size="sm">
+                        {evt.type}
+                      </Badge>
+                      <span className="telemetry-event-row__msg">{evt.message}</span>
+                      <span className="telemetry-event-row__latency">{evt.latency}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -262,19 +268,25 @@ export function ActiveAnomalies({
 
           {decisionLogsOpen && (
             <div className="collapsible-drawer__body">
-              <div className="decision-logs-list">
-                {decisionLogs.map((log) => (
-                  <div key={log.id} className="decision-log-row">
-                    <div className="decision-log-row__top">
-                      <span className="decision-log-row__actor">{log.actor}</span>
-                      <span className="decision-log-row__time">{log.timestamp}</span>
-                      <Badge variant="violet" size="sm">{log.status}</Badge>
+              {decisionLogs.length === 0 ? (
+                <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+                  No autonomous actions executed yet. Mitigations applied by FRIDAY AI or manual triggers will appear here.
+                </div>
+              ) : (
+                <div className="decision-logs-list">
+                  {decisionLogs.map((log) => (
+                    <div key={log.id} className="decision-log-row">
+                      <div className="decision-log-row__top">
+                        <span className="decision-log-row__actor">{log.actor}</span>
+                        <span className="decision-log-row__time">{log.timestamp}</span>
+                        <Badge variant="violet" size="sm">{log.status}</Badge>
+                      </div>
+                      <div className="decision-log-row__action">{log.action}</div>
+                      <div className="decision-log-row__impact">{log.impact}</div>
                     </div>
-                    <div className="decision-log-row__action">{log.action}</div>
-                    <div className="decision-log-row__impact">{log.impact}</div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <div className="collapsible-drawer__footer">
                 <button

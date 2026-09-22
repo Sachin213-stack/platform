@@ -19,26 +19,7 @@ export function RootCauseBreakdown({
     );
   }
 
-  const rootCauses = anomaly.rootCauses || [
-    {
-      factor: 'Service Load Contention',
-      importance: 55,
-      category: 'Compute',
-      description: 'High thread contention observed in microservice runtime.',
-    },
-    {
-      factor: 'External Dependency Latency',
-      importance: 30,
-      category: 'Network',
-      description: 'Upstream gateway latency exceeded nominal SLA.',
-    },
-    {
-      factor: 'Cache Miss Inefficiencies',
-      importance: 15,
-      category: 'Cache',
-      description: 'Elevated origin database fallback requests.',
-    },
-  ];
+  const rootCauses = anomaly.rootCauses || [];
 
   return (
     <Card padding="normal" className="analytics-root-cause-card">
@@ -167,7 +148,12 @@ export function RootCauseBreakdown({
           </span>
         </div>
 
-        {rootCauses.map((rc, idx) => {
+        {rootCauses.length === 0 ? (
+          <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+            No isolated contributing factors identified for this anomaly.
+          </div>
+        ) : (
+          rootCauses.map((rc, idx) => {
           // Color coding based on rank
           const barColor =
             idx === 0
@@ -239,7 +225,8 @@ export function RootCauseBreakdown({
               </p>
             </div>
           );
-        })}
+        })
+        )}
       </div>
     </Card>
   );

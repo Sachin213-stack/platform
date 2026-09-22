@@ -21,82 +21,8 @@ import { CancelSubscriptionModal } from './components/CancelSubscriptionModal';
 import { InvoiceDetailModal } from './components/InvoiceDetailModal';
 import { RetryPaymentModal } from './components/RetryPaymentModal';
 
-const INITIAL_CARDS = [
-  {
-    id: 'card_1',
-    brand: 'Visa',
-    last4: '4242',
-    expMonth: '12',
-    expYear: '2028',
-    holderName: 'Primary Cardholder',
-    isPrimary: true,
-  },
-  {
-    id: 'card_2',
-    brand: 'Mastercard',
-    last4: '8821',
-    expMonth: '09',
-    expYear: '2027',
-    holderName: 'Apex Engineering Corp',
-    isPrimary: false,
-  },
-  {
-    id: 'card_3',
-    brand: 'American Express',
-    last4: '1009',
-    expMonth: '04',
-    expYear: '2029',
-    holderName: 'DevOps Cloud Vault',
-    isPrimary: false,
-  },
-];
-
-const INITIAL_INVOICES = [
-  {
-    id: 'INV-2026-08',
-    date: 'Aug 01, 2026',
-    description: 'AI-CTO Enterprise Plan (10M Events / 2,500 Actions)',
-    subtotal: 799.0,
-    tax: 143.82,
-    total: 942.82,
-    amount: 942.82,
-    status: 'Paid',
-    cardLast4: '4242',
-  },
-  {
-    id: 'INV-2026-07',
-    date: 'Jul 01, 2026',
-    description: 'AI-CTO Enterprise Plan (10M Events / 2,500 Actions)',
-    subtotal: 799.0,
-    tax: 143.82,
-    total: 942.82,
-    amount: 942.82,
-    status: 'Paid',
-    cardLast4: '4242',
-  },
-  {
-    id: 'INV-2026-06',
-    date: 'Jun 01, 2026',
-    description: 'AI-CTO Enterprise Plan (10M Events / 2,500 Actions)',
-    subtotal: 799.0,
-    tax: 143.82,
-    total: 942.82,
-    amount: 942.82,
-    status: 'Paid',
-    cardLast4: '4242',
-  },
-  {
-    id: 'INV-2026-05',
-    date: 'May 14, 2026',
-    description: 'On-Demand Autonomous Agent Burst (1,000 Invocations)',
-    subtotal: 120.0,
-    tax: 21.6,
-    total: 141.6,
-    amount: 141.6,
-    status: 'Failed',
-    cardLast4: '8821',
-  },
-];
+const INITIAL_CARDS = [];
+const INITIAL_INVOICES = [];
 
 export default function BillingPage({ onNavigate }) {
   const { addToast } = useToast();
@@ -371,7 +297,7 @@ export default function BillingPage({ onNavigate }) {
         <UsageAlerts
           initialThreshold={80}
           initialChannels={['email', 'slack']}
-          initialEmail="cto-office@apexretail.io"
+          initialEmail="cto@aicto.io"
           onSaveAlertSettings={handleSaveAlertSettings}
         />
       </div>

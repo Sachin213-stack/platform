@@ -31,7 +31,7 @@ export function AnalyticsProvider({ children }) {
   // ── 6. Live Ingested Telemetry Data ───────────────────────────
   const [hasLiveData, setHasLiveData] = useState(false);
   const [liveForecastCurve, setLiveForecastCurve] = useState(null);
-  const [baseCrashRisk, setBaseCrashRisk] = useState(4.2);
+  const [baseCrashRisk, setBaseCrashRisk] = useState(0);
 
   // Fetch real analytics models and capacity data from backend
   const fetchLiveAnalytics = useCallback(async () => {
@@ -48,22 +48,31 @@ export function AnalyticsProvider({ children }) {
       }
       if (res.resource_runway_days) {
         setResourceRunway((prev) => ({
-          ...prev,
           runwayDays: res.resource_runway_days,
-          growthRatePct: res.growth_rate_pct ?? prev.growthRatePct,
-          bottleneck: res.bottleneck ?? prev.bottleneck,
+          runwayWeeks: Math.round(res.resource_runway_days / 7),
+          growthRatePct: res.growth_rate_pct ?? (prev?.growthRatePct || 0),
+          bottleneck: res.bottleneck ?? (prev?.bottleneck || 'Compute Capacity'),
           status: res.resource_runway_days < 14 ? 'Critical' : 'Healthy',
-          exhaustionDate: res.exhaustion_date ?? prev.exhaustionDate,
-          recommendedAction: res.recommended_action ?? prev.recommendedAction,
+          exhaustionDate: res.exhaustion_date ?? (prev?.exhaustionDate || 'Awaiting baseline'),
+          recommendedAction: res.recommended_action ?? (prev?.recommendedAction || 'Monitor ingress telemetry'),
+          currentMonthlyCost: prev?.currentMonthlyCost || 0,
+          bottleneckCurrentPct: prev?.bottleneckCurrentPct || 0,
+          bottleneckLimitPct: prev?.bottleneckLimitPct || 90,
+          ...prev,
         }));
       }
       if (res.model_metrics) {
         setModelMetrics((prev) => ({
+          version: 'v3.2.4-prod',
+          modelType: 'Hybrid LSTM-Transformer Telemetry Predictor',
+          status: 'Calibrated',
+          lastRetrained: 'Recently',
+          datasetVectors: 'Live Telemetry',
           ...prev,
-          precision: res.model_metrics.precision ?? prev.precision,
-          recall: res.model_metrics.recall ?? prev.recall,
-          f1Score: res.model_metrics.f1Score ?? prev.f1Score,
-          datasetVectors: res.model_metrics.datasetVectors ?? prev.datasetVectors,
+          precision: res.model_metrics.precision ?? (prev?.precision || 0),
+          recall: res.model_metrics.recall ?? (prev?.recall || 0),
+          f1Score: res.model_metrics.f1Score ?? (prev?.f1Score || 0),
+          falsePositiveRate: prev?.falsePositiveRate || 0,
         }));
       }
       if (res.forecast_curve && (res.forecast_curve.points || res.forecast_curve.yhat)) {
@@ -170,6 +179,13 @@ export function AnalyticsProvider({ children }) {
 
       // Query resource runway
       if (q.includes('runway') || q.includes('capacity limit') || q.includes('exhaustion')) {
+        if (!resourceRunway) {
+          return {
+            text: 'Resource runway projections are currently awaiting live telemetry ingestion to establish saturation bounds.',
+            actionTaken: 'QUERY_RUNWAY',
+            data: null,
+          };
+        }
         return {
           text: `Resource Runway Assessment: At current growth (+${resourceRunway.growthRatePct}%/wk), the cluster capacity limit is estimated in ~${resourceRunway.runwayDays} days (${resourceRunway.exhaustionDate}). Primary bottleneck: ${resourceRunway.bottleneck}. Recommended proactive measure: ${resourceRunway.recommendedAction}.`,
           actionTaken: 'QUERY_RUNWAY',
@@ -199,8 +215,15 @@ export function AnalyticsProvider({ children }) {
 
       // Query model metrics / accuracy
       if (q.includes('model') || q.includes('accuracy') || q.includes('precision') || q.includes('recall')) {
+        if (!modelMetrics) {
+          return {
+            text: 'Predictive ML models are currently standing by. Precision and recall calibration metrics will appear once telemetry is streamed.',
+            actionTaken: 'QUERY_MODEL_METRICS',
+            data: null,
+          };
+        }
         return {
-          text: `Predictive ML Model v3.2 Status: Precision is ${modelMetrics.precision}%, Recall is ${modelMetrics.recall}%, and False Positive Rate is ${modelMetrics.falsePositiveRate}% with an F1 score of ${modelMetrics.f1Score}%. Last retrained ${modelMetrics.lastRetrained} over ${modelMetrics.datasetVectors} telemetry vectors.`,
+          text: `Predictive ML Model Status: Precision is ${modelMetrics.precision}%, Recall is ${modelMetrics.recall}%, and False Positive Rate is ${modelMetrics.falsePositiveRate}% with an F1 score of ${modelMetrics.f1Score}%. Calibration over ${modelMetrics.datasetVectors}.`,
           actionTaken: 'QUERY_MODEL_METRICS',
           data: modelMetrics,
         };

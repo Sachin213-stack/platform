@@ -7,8 +7,15 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((message, type = 'success', duration = 3500) => {
+    let text = message;
+    let toastType = type;
+    if (message && typeof message === 'object') {
+      text = message.message || message.detail || message.title || JSON.stringify(message);
+      if (message.variant) toastType = message.variant;
+      else if (message.type) toastType = message.type;
+    }
     const id = Date.now() + Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message: String(text || ''), type: toastType }]);
 
     if (duration > 0) {
       setTimeout(() => {

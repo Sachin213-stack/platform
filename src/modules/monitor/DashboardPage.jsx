@@ -71,10 +71,10 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const [liveTierMetrics, setLiveTierMetrics] = useState(null);
   const [showIntegrationSnippet, setShowIntegrationSnippet] = useState(false);
 
-  // Cluster vitals
-  const [cpuUsage, setCpuUsage] = useState(48);
-  const [memUsage, setMemUsage] = useState(64);
-  const [queueDepth, setQueueDepth] = useState(78);
+  // Cluster vitals - start at 0 until live telemetry/capacity is received
+  const [cpuUsage, setCpuUsage] = useState(0);
+  const [memUsage, setMemUsage] = useState(0);
+  const [queueDepth, setQueueDepth] = useState(0);
 
   // Loading & Error states
   const [isLoading, setIsLoading] = useState(false);
@@ -83,7 +83,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   // ── Compute Dynamic KPI Overrides from Live Backend Data ──────────
   // ── Compute Dynamic KPI Overrides from Live Backend Data ──────────
   const kpiOverrides = useMemo(() => {
-    if (!liveKpis) return null;
+    if (!liveKpis || !hasLiveData) return null;
     const isWeek = comparisonPeriod === 'week';
     const bizType = selectedBusiness?.type || 'ecommerce';
 
@@ -472,24 +472,8 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
       }
 
       setLastUpdatedSeconds(0);
-    } catch (err) {
-      // Fallback with live jitter simulation if offline
-      setCpuUsage((prev) => Math.min(95, Math.max(30, prev + Math.floor((Math.random() - 0.5) * 6))));
-      setMemUsage((prev) => Math.min(92, Math.max(45, prev + Math.floor((Math.random() - 0.5) * 4))));
-      setQueueDepth((prev) => Math.min(94, Math.max(40, prev + Math.floor((Math.random() - 0.5) * 8))));
-
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0];
-      const fallbackProbe = {
-        id: `tel-${Date.now()}`,
-        time: timeStr,
-        type: 'HEARTBEAT',
-        level: 'info',
-        message: `Edge probe verified for ${selectedBusiness.domain} (local neural core).`,
-        latency: `${Math.floor(28 + Math.random() * 20)}ms`,
-      };
-
-      setTelemetryEvents((prev) => [fallbackProbe, ...prev.slice(0, 7)]);
+    } catch (_err) {
+      // In offline or disconnected state, do not inject fake telemetry events
       setLastUpdatedSeconds(0);
     } finally {
       setIsRefreshing(false);
@@ -566,7 +550,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
     if (onShowToast) {
       onShowToast({
         title: 'CDN Cache Invalidation Dispatched',
-        message: `Edge purge tag broadcast to 240+ Cloudflare edge PoPs for ${selectedBusiness.domain}.`,
+        message: `Edge purge tag broadcast to 240+ Cloudflare edge PoPs for ${selectedBusiness?.domain || 'cluster'}.`,
         variant: 'success',
       });
     }
@@ -589,7 +573,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   if (hasError) {
     return (
       <DashboardErrorState
-        errorMessage={`Unable to connect to telemetry daemon for ${selectedBusiness.name}. Connection timed out after 30s.`}
+        errorMessage={`Unable to connect to telemetry daemon for ${selectedBusiness?.name || 'cluster'}. Connection timed out after 30s.`}
         onRetry={() => {
           setHasError(false);
           setIsLoading(true);
@@ -630,7 +614,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
           if (onShowToast) {
             onShowToast({
               title: next ? 'Telemetry Stream Reconnected' : 'Telemetry Stream Disconnected',
-              message: next ? 'Live node telemetry is syncing.' : 'Dashboard is operating in simulated offline mode.',
+              message: next ? 'Live node telemetry is syncing.' : 'Dashboard is operating in offline mode.',
               variant: next ? 'success' : 'warning',
             });
           }
@@ -648,7 +632,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         onNavigate={onNavigate}
       />
 
-      {/* ── Real Website vs Demo Baseline Connection Bar ──────────── */}
+      {/* ── Real Website vs Awaiting Telemetry Connection Bar ──────────── */}
       <div style={{
         margin: 'var(--space-2) 0 var(--space-4)',
         padding: '12px 18px',
@@ -677,7 +661,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
             {hasLiveData
               ? 'Active Website Telemetry Connected — Ingesting live microservice metrics & transactions'
-              : 'Demo Baseline Active — Showing starter telemetry models until your active website sends events'}
+              : 'Awaiting Live Telemetry — Install tracking snippet or send ingestion events to stream metrics'}
           </span>
         </div>
         <button
@@ -693,18 +677,18 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
             fontWeight: 500,
           }}
         >
-          {hasLiveData ? '🔌 View Ingestion Snippet' : '⚡ Connect Active Website'}
+          {hasLiveData ? '🔌 View Ingestion Snippet' : '⚡ Connect Tracking Snippet'}
         </button>
       </div>
 
       {/* ── 2. Health Status Banner ──────────────────────────────── */}
       <HealthStatusBanner
-        healthScore={healthScore}
-        status={healthStatus}
-        anomalyCount={anomalies.length}
-        activeServices="14/14"
-        uptime="99.98%"
-        avgLatency={liveKpis ? `${liveKpis.response_time_ms}ms` : (selectedBusiness.type === 'content' ? '64ms' : '142ms')}
+        healthScore={hasLiveData ? healthScore : 100}
+        status={hasLiveData ? healthStatus : 'healthy'}
+        anomalyCount={hasLiveData ? anomalies.length : 0}
+        activeServices={hasLiveData ? "14/14" : "Standby"}
+        uptime={hasLiveData ? "99.98%" : "100%"}
+        avgLatency={hasLiveData && liveKpis && liveKpis.response_time_ms > 0 ? `${liveKpis.response_time_ms}ms` : '--'}
         onInspectAnomalies={() => {
           const el = document.getElementById('anomalies-section-anchor');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -713,7 +697,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
 
       {/* ── 3. KPI Strip (Top Row) ───────────────────────────────── */}
       <KpiStrip
-        businessType={selectedBusiness.type}
+        businessType={selectedBusiness?.type || 'ecommerce'}
         comparisonPeriod={comparisonPeriod}
         onComparisonChange={setComparisonPeriod}
         kpiOverrides={kpiOverrides}
@@ -721,7 +705,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
 
       {/* ── 4. Business Metrics Row (2nd Tier KPIs) ──────────────── */}
       <BusinessMetricsRow
-        businessType={selectedBusiness.type}
+        businessType={selectedBusiness?.type || 'ecommerce'}
         isLive={isConnected}
         isSyncing={isRefreshing}
         hasLiveData={hasLiveData}
@@ -734,7 +718,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         <div className="dashboard-left-col">
           {/* ── 7. Traffic & Revenue Chart (24h/7d/30d) ───────────── */}
           <TrafficRevenueChart
-            businessType={selectedBusiness.type}
+            businessType={selectedBusiness?.type || 'ecommerce'}
             isLive={isConnected}
             hasLiveData={hasLiveData}
             liveData={timeseriesData}

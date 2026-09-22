@@ -17,10 +17,10 @@ export function UsageOverview({
     {
       id: 'telemetry',
       name: 'Monthly Telemetry Compute',
-      used: 4.2,
+      used: 0,
       limit: 10,
       unit: 'M Events',
-      percent: 42,
+      percent: 0,
       variant: 'violet',
       icon: (
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" width="14" height="14">
@@ -31,10 +31,10 @@ export function UsageOverview({
     {
       id: 'friday_ai',
       name: 'FRIDAY AI Agent Invocations',
-      used: 842,
+      used: 0,
       limit: 2500,
       unit: 'Actions',
-      percent: 33.7,
+      percent: 0,
       variant: 'emerald',
       icon: (
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" width="14" height="14">
@@ -45,10 +45,10 @@ export function UsageOverview({
     {
       id: 'vector_storage',
       name: 'Vector Database Storage',
-      used: 14.2,
+      used: 0,
       limit: 25,
       unit: 'GB',
-      percent: 56.8,
+      percent: 0,
       variant: 'amber',
       icon: (
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" width="14" height="14">
@@ -61,10 +61,10 @@ export function UsageOverview({
     {
       id: 'egress',
       name: 'Real-time API Egress Bandwidth',
-      used: 128,
+      used: 0,
       limit: 500,
       unit: 'GB',
-      percent: 25.6,
+      percent: 0,
       variant: 'violet',
       icon: (
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" width="14" height="14">

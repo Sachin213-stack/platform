@@ -273,14 +273,14 @@ export const authApi = {
 
   async demoLogin() {
     const data = await request('/auth/demo', { method: 'POST' });
-    const demoUser = {
-      email: 'demo.cto@aicto.io',
+    const defaultUser = {
+      email: data.email || 'admin@aicto.io',
       business_id: data.business_id,
-      name: 'Alex Vance (Lead Architect)',
-      business_name: 'Apex Retail Global',
+      name: data.name || 'Platform Administrator',
+      business_name: data.business_name || 'Primary Workspace',
       role: 'owner',
     };
-    setAuthSession(data, demoUser);
+    setAuthSession(data, defaultUser);
     try {
       const me = await userApi.getMe();
       if (me && me.email) {

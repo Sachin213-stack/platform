@@ -33,6 +33,7 @@ export function ForecastChart({
 
   // Compute maximum scale boundary
   const maxCapacity = useMemo(() => {
+    if (!data || data.length === 0) return 8000;
     const allVals = data.flatMap((d) => [
       d.actual || 0,
       d.predicted || 0,
@@ -44,18 +45,20 @@ export function ForecastChart({
 
   // Map to SVG coordinates
   const pointsActual = useMemo(() => {
+    if (!data || data.length === 0) return [];
     return data
       .filter((d) => d.actual !== null)
-      .map((d, i, arr) => {
-        const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+      .map((d, i) => {
+        const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
         const y = PADDING.top + PLOT_HEIGHT - (d.actual / maxCapacity) * PLOT_HEIGHT;
         return { x, y, data: d };
       });
   }, [data, maxCapacity]);
 
   const pointsPredicted = useMemo(() => {
+    if (!data || data.length === 0) return [];
     return data.map((d, i) => {
-      const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+      const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
       const y = PADDING.top + PLOT_HEIGHT - (d.predicted / maxCapacity) * PLOT_HEIGHT;
       const yUpper = PADDING.top + PLOT_HEIGHT - (d.upperConfidence / maxCapacity) * PLOT_HEIGHT;
       const yLower = PADDING.top + PLOT_HEIGHT - (d.lowerConfidence / maxCapacity) * PLOT_HEIGHT;
@@ -64,11 +67,11 @@ export function ForecastChart({
   }, [data, maxCapacity]);
 
   const pointsComparison = useMemo(() => {
-    if (compareMode === 'none') return [];
+    if (compareMode === 'none' || !data || data.length === 0) return [];
     return data
       .filter((d) => d.comparisonValue !== null)
       .map((d, i) => {
-        const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+        const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
         const y = PADDING.top + PLOT_HEIGHT - (d.comparisonValue / maxCapacity) * PLOT_HEIGHT;
         return { x, y, data: d };
       });
@@ -295,7 +298,45 @@ export function ForecastChart({
         </div>
       </div>
 
-      {/* Transparent SVG Forecast Canvas */}
+      {/* Transparent SVG Forecast Canvas or Clean Empty State */}
+      {!data || data.length === 0 ? (
+        <div style={{
+          height: '250px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px dashed var(--color-border-subtle)',
+          margin: 'var(--space-3) 0',
+          padding: '24px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'rgba(99, 102, 241, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '12px',
+            color: 'var(--color-primary, #6366f1)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+              <polyline points="17 6 23 6 23 12" />
+            </svg>
+          </div>
+          <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            No Predictive Forecast Available Yet
+          </p>
+          <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '400px' }}>
+            Capacity curves and confidence envelopes calibrate automatically once sufficient website telemetry has been ingested.
+          </p>
+        </div>
+      ) : (
       <div
         className="traffic-chart-canvas-container"
         ref={containerRef}
@@ -470,6 +511,7 @@ export function ForecastChart({
           </div>
         )}
       </div>
+      )}
     </Card>
   );
 }

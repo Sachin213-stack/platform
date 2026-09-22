@@ -48,21 +48,32 @@ export function TrafficRevenueChart({
   }, [hasLiveData, liveData, timeRange, businessType]);
 
   // Compute scale boundaries
-  const maxTraffic = useMemo(() => Math.max(...data.map((d) => d.traffic)) * 1.15, [data]);
-  const maxRevenue = useMemo(() => Math.max(...data.map((d) => d.revenue)) * 1.15, [data]);
+  const maxTraffic = useMemo(() => {
+    if (!data || data.length === 0) return 100;
+    const vals = data.map((d) => d.traffic || 0);
+    return Math.max(...vals, 10) * 1.15;
+  }, [data]);
+
+  const maxRevenue = useMemo(() => {
+    if (!data || data.length === 0) return 100;
+    const vals = data.map((d) => d.revenue || 0);
+    return Math.max(...vals, 10) * 1.15;
+  }, [data]);
 
   // Build SVG path points
   const pointsTraffic = useMemo(() => {
+    if (!data || data.length === 0) return [];
     return data.map((d, i) => {
-      const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+      const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
       const y = PADDING.top + PLOT_HEIGHT - (d.traffic / maxTraffic) * PLOT_HEIGHT;
       return { x, y, data: d };
     });
   }, [data, maxTraffic]);
 
   const pointsRevenue = useMemo(() => {
+    if (!data || data.length === 0) return [];
     return data.map((d, i) => {
-      const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+      const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
       const y = PADDING.top + PLOT_HEIGHT - (d.revenue / maxRevenue) * PLOT_HEIGHT;
       return { x, y, data: d };
     });
@@ -130,12 +141,12 @@ export function TrafficRevenueChart({
                 <span className="traffic-live-indicator__dot" style={{ background: '#10b981' }} />
                 Live Website Stream
               </span>
-            ) : isLive ? (
-              <span className="traffic-live-indicator" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                <span className="traffic-live-indicator__dot" style={{ background: '#f59e0b' }} />
-                Demo Baseline Model
+            ) : (
+              <span className="traffic-live-indicator" style={{ background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.3)' }}>
+                <span className="traffic-live-indicator__dot" style={{ background: '#94a3b8' }} />
+                Awaiting Telemetry
               </span>
-            ) : null}
+            )}
           </div>
           <p className="traffic-chart-subtitle">
             Correlated request throughput vs checkout GMV velocity
@@ -204,11 +215,51 @@ export function TrafficRevenueChart({
           </div>
         )}
         <div className="legend-item legend-item--conversion">
-          <span className="legend-badge">Avg Conv: {data[data.length - 1]?.conversion || 3.2}%</span>
+          <span className="legend-badge">
+            Avg Conv: {data && data.length > 0 && data[data.length - 1]?.conversion ? `${data[data.length - 1].conversion}%` : '0%'}
+          </span>
         </div>
       </div>
 
-      {/* ── SVG Transparent Chart Canvas ── */}
+      {/* ── Empty State or SVG Transparent Chart Canvas ── */}
+      {!data || data.length === 0 ? (
+        <div style={{
+          height: '240px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px dashed var(--color-border-subtle)',
+          margin: 'var(--space-2) 0',
+          padding: '24px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'rgba(99, 102, 241, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '12px',
+            color: 'var(--color-primary, #6366f1)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 3v18h18" />
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+            </svg>
+          </div>
+          <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            No Telemetry Received Yet
+          </p>
+          <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '380px' }}>
+            Traffic, latency, and throughput charts will populate live as requests flow through your connected website or ingestion endpoint.
+          </p>
+        </div>
+      ) : (
       <div
         className="traffic-chart-canvas-container"
         ref={containerRef}
@@ -373,6 +424,7 @@ export function TrafficRevenueChart({
           </div>
         )}
       </div>
+      )}
     </Card>
   );
 }

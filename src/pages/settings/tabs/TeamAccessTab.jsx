@@ -5,62 +5,26 @@ import { Badge } from '../../../shared/components/Badge';
 import { Modal } from '../../../shared/components/Modal';
 import { ConfirmModal } from '../../../shared/components/ConfirmModal';
 import { useToast } from '../../../shared/components/Toast';
+import { getStoredUser } from '../../../shared/services/apiClient';
+
+const user = getStoredUser();
+const currentUserName = user?.name || (user?.email ? user.email.split('@')[0] : 'Workspace Owner');
+const currentUserEmail = user?.email || 'admin@aicto.io';
+const initials = currentUserName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'WO';
 
 const INITIAL_MEMBERS = [
   {
-    id: 'mem_1',
-    name: 'Alex Mercer (You)',
-    email: 'alex.cto@acmeglobal.com',
+    id: 'mem_owner',
+    name: `${currentUserName} (You)`,
+    email: currentUserEmail,
     role: 'Owner',
-    avatarInitials: 'AM',
+    avatarInitials: initials,
     avatarBg: '#8b5cf6',
     lastActive: 'Active now',
   },
-  {
-    id: 'mem_2',
-    name: 'Elena Rostova',
-    email: 'elena.r@acmeglobal.com',
-    role: 'Admin',
-    avatarInitials: 'ER',
-    avatarBg: '#3b82f6',
-    lastActive: '12 mins ago',
-  },
-  {
-    id: 'mem_3',
-    name: 'David Chen',
-    email: 'david.chen@acmeglobal.com',
-    role: 'Analyst',
-    avatarInitials: 'DC',
-    avatarBg: '#10b981',
-    lastActive: '1 hour ago',
-  },
-  {
-    id: 'mem_4',
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@acmeglobal.com',
-    role: 'Viewer',
-    avatarInitials: 'SJ',
-    avatarBg: '#f59e0b',
-    lastActive: 'Yesterday at 16:42',
-  },
 ];
 
-const INITIAL_INVITES = [
-  {
-    id: 'inv_1',
-    email: 'marcus.vance@contractor-ops.io',
-    role: 'Analyst',
-    invitedDate: 'Aug 26, 2026',
-    invitedBy: 'Alex Mercer',
-  },
-  {
-    id: 'inv_2',
-    email: 'auditor@kpmg-security.com',
-    role: 'Viewer',
-    invitedDate: 'Aug 28, 2026',
-    invitedBy: 'Elena Rostova',
-  },
-];
+const INITIAL_INVITES = [];
 
 const PERMISSION_MATRIX = [
   { feature: 'View Dashboard & Vitals', viewer: true, analyst: true, admin: true, owner: true },

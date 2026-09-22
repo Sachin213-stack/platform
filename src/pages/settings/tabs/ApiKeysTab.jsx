@@ -7,38 +7,7 @@ import { ConfirmModal } from '../../../shared/components/ConfirmModal';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { useToast } from '../../../shared/components/Toast';
 
-const INITIAL_KEYS = [
-  {
-    id: 'key_1',
-    name: 'Production Shopify Sync Worker',
-    prefix: 'sk_live_',
-    last4: '882a',
-    scope: 'full_access',
-    rateLimit: '1,000 req/min',
-    createdAt: '2026-08-15 10:22',
-    lastUsed: 'Just now',
-  },
-  {
-    id: 'key_2',
-    name: 'Grafana Read-only Telemetry Exporter',
-    prefix: 'sk_live_',
-    last4: '4f91',
-    scope: 'read_only',
-    rateLimit: '500 req/min',
-    createdAt: '2026-07-28 14:05',
-    lastUsed: '3 mins ago',
-  },
-  {
-    id: 'key_3',
-    name: 'Datadog Ingestion Pipeline',
-    prefix: 'sk_live_',
-    last4: 'e31b',
-    scope: 'full_access',
-    rateLimit: '2,500 req/min',
-    createdAt: '2026-06-11 09:30',
-    lastUsed: '2 hours ago',
-  },
-];
+const INITIAL_KEYS = [];
 
 export function ApiKeysTab() {
   const { addToast } = useToast();

@@ -3,7 +3,20 @@ import { Card } from '../../../shared/components/Card';
 import { Badge } from '../../../shared/components/Badge';
 
 export function ModelMetrics({ modelMetrics, onAskFriday }) {
-  if (!modelMetrics) return null;
+  if (!modelMetrics) {
+    return (
+      <Card padding="compact" className="analytics-model-metrics-card">
+        <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '0 0 6px', fontWeight: 600 }}>
+            Predictive Model Calibration Pending
+          </p>
+          <span style={{ color: 'var(--color-text-tertiary)', fontSize: '12px' }}>
+            ML confidence and accuracy metrics will calibrate automatically once live telemetry streams.
+          </span>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card padding="compact" className="analytics-model-metrics-card">

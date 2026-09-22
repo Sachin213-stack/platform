@@ -27,15 +27,16 @@ export function CorrelationView({ onAskFriday }) {
   }, [selectedPairId]);
 
   // Compute scale boundaries for dual axes
-  const maxA = useMemo(() => Math.max(...data.map((d) => d.valA)) * 1.15, [data]);
-  const minA = useMemo(() => Math.min(...data.map((d) => d.valA)) * 0.85, [data]);
-  const maxB = useMemo(() => Math.max(...data.map((d) => d.valB)) * 1.15, [data]);
-  const minB = useMemo(() => Math.min(...data.map((d) => d.valB)) * 0.85, [data]);
+  const maxA = useMemo(() => data && data.length > 0 ? Math.max(...data.map((d) => d.valA)) * 1.15 : 1, [data]);
+  const minA = useMemo(() => data && data.length > 0 ? Math.min(...data.map((d) => d.valA)) * 0.85 : 0, [data]);
+  const maxB = useMemo(() => data && data.length > 0 ? Math.max(...data.map((d) => d.valB)) * 1.15 : 1, [data]);
+  const minB = useMemo(() => data && data.length > 0 ? Math.min(...data.map((d) => d.valB)) * 0.85 : 0, [data]);
 
   // Build SVG Points for Metric A (left axis) and Metric B (right axis)
   const pointsA = useMemo(() => {
+    if (!data || data.length === 0) return [];
     return data.map((d, i) => {
-      const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+      const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
       const yRange = maxA - minA || 1;
       const y = PADDING.top + PLOT_HEIGHT - ((d.valA - minA) / yRange) * PLOT_HEIGHT;
       return { x, y, val: d.valA, label: d.label };
@@ -43,8 +44,9 @@ export function CorrelationView({ onAskFriday }) {
   }, [data, maxA, minA]);
 
   const pointsB = useMemo(() => {
+    if (!data || data.length === 0) return [];
     return data.map((d, i) => {
-      const x = PADDING.left + (i / (data.length - 1)) * PLOT_WIDTH;
+      const x = PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * PLOT_WIDTH : PLOT_WIDTH / 2);
       const yRange = maxB - minB || 1;
       const y = PADDING.top + PLOT_HEIGHT - ((d.valB - minB) / yRange) * PLOT_HEIGHT;
       return { x, y, val: d.valB, label: d.label };
@@ -180,7 +182,29 @@ export function CorrelationView({ onAskFriday }) {
         </div>
       </div>
 
-      {/* Transparent Dual-Axis SVG Chart */}
+      {/* Transparent Dual-Axis SVG Chart or Clean Empty State */}
+      {!data || data.length === 0 ? (
+        <div style={{
+          height: '240px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px dashed var(--color-border-subtle)',
+          margin: 'var(--space-3) 0',
+          padding: '24px',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            No Multi-Metric Correlation Data Yet
+          </p>
+          <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '400px' }}>
+            Multi-axis correlation regression models will fit curves once sufficient telemetry metrics have been ingested.
+          </p>
+        </div>
+      ) : (
       <div
         className="traffic-chart-canvas-container"
         ref={containerRef}
@@ -337,6 +361,7 @@ export function CorrelationView({ onAskFriday }) {
           </div>
         )}
       </div>
+      )}
 
       {/* ML Correlation Insight Banner */}
       <div

@@ -9,7 +9,7 @@ const ONBOARDING_DRAFT_KEY = 'aicto_onboarding_draft_v1';
 const TenantContext = createContext(null);
 
 export function TenantProvider({ children }) {
-  // Initialize businesses from localStorage or fallback to default BUSINESS_PROFILES
+  // Initialize businesses from authenticated user or localStorage (no fake profiles)
   const [businesses, setBusinesses] = useState(() => {
     try {
       const stored = getStoredUser();
@@ -24,20 +24,27 @@ export function TenantProvider({ children }) {
           domain: stored.domain || `${(stored.business_name || 'org').toLowerCase().replace(/\s+/g, '-')}.io`,
           ops_email: stored.ops_email,
         };
-        const others = BUSINESS_PROFILES.filter((b) => b.id !== userBiz.id);
-        return [userBiz, ...others];
+        return [userBiz];
       }
       const saved = localStorage.getItem(TENANTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const genuineTenants = parsed.filter((b) => {
+            const id = (b.id || '').toLowerCase();
+            const name = (b.name || '').toLowerCase();
+            return !['apex-retail', 'nexus-cloud', 'vortex-media', 'cyber-fin', 'acme-innovations'].includes(id) &&
+                   !name.includes('acme') &&
+                   !name.includes('apex') &&
+                   !name.includes('diagnostic');
+          });
+          if (genuineTenants.length > 0) return genuineTenants;
         }
       }
     } catch (e) {
-      console.warn('Failed to load businesses from localStorage:', e);
+      console.warn('Failed to load businesses from storage:', e);
     }
-    return BUSINESS_PROFILES;
+    return [];
   });
 
   // Initialize selectedBusinessId from stored user or localStorage
@@ -48,11 +55,16 @@ export function TenantProvider({ children }) {
         return String(stored.business_id);
       }
       const savedId = localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
-      if (savedId) return savedId;
+      if (savedId) {
+        const idLower = savedId.toLowerCase();
+        if (!['apex-retail', 'nexus-cloud', 'vortex-media', 'cyber-fin', 'acme-innovations'].includes(idLower) && !idLower.includes('acme') && !idLower.includes('apex')) {
+          return savedId;
+        }
+      }
     } catch (e) {
-      console.warn('Failed to load active tenant ID from localStorage:', e);
+      console.warn('Failed to load active tenant ID from storage:', e);
     }
-    return BUSINESS_PROFILES[0]?.id || 'apex-retail';
+    return null;
   });
 
   // Modal / Onboarding Wizard State
@@ -78,7 +90,7 @@ export function TenantProvider({ children }) {
   }, [selectedBusinessId]);
 
   // Derive active business object
-  const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId) || businesses[0] || BUSINESS_PROFILES[0];
+  const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId) || businesses[0] || null;
 
   const switchBusiness = (businessOrId) => {
     const id = typeof businessOrId === 'string' ? businessOrId : businessOrId?.id;

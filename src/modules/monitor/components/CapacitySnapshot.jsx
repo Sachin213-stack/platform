@@ -2,9 +2,9 @@ import React from 'react';
 import { Card } from '../../../shared/components/Card';
 
 export function CapacitySnapshot({
-  cpuUsage = 48,
-  memUsage = 64,
-  queueDepth = 82, // elevated to show threshold color
+  cpuUsage = 0,
+  memUsage = 0,
+  queueDepth = 0,
   onNavigateToAnalytics,
 }) {
   const getThresholdStatus = (val) => {
@@ -75,7 +75,9 @@ export function CapacitySnapshot({
           <div className="capacity-meter__meta">
             <div className="capacity-meter__label-group">
               <span className="capacity-meter__name">CPU Core Allocation</span>
-              <span className="capacity-meter__sub">16 / 32 vCPUs active</span>
+              <span className="capacity-meter__sub">
+                {cpuUsage === 0 ? 'Standby · Ingest telemetry to track load' : `${Math.round(cpuUsage * 0.32)} / 32 vCPUs active`}
+              </span>
             </div>
             <div className="capacity-meter__val-group">
               <span className="capacity-meter__percentage">{cpuUsage}%</span>
@@ -100,7 +102,9 @@ export function CapacitySnapshot({
           <div className="capacity-meter__meta">
             <div className="capacity-meter__label-group">
               <span className="capacity-meter__name">Cluster RAM (64 GB)</span>
-              <span className="capacity-meter__sub">41.0 GB reserved · 23 GB buffer</span>
+              <span className="capacity-meter__sub">
+                {memUsage === 0 ? 'Standby · Ingest telemetry to track buffer' : `${(memUsage * 0.64).toFixed(1)} GB reserved · ${(64 - memUsage * 0.64).toFixed(1)} GB buffer`}
+              </span>
             </div>
             <div className="capacity-meter__val-group">
               <span className="capacity-meter__percentage">{memUsage}%</span>
@@ -125,7 +129,9 @@ export function CapacitySnapshot({
           <div className="capacity-meter__meta">
             <div className="capacity-meter__label-group">
               <span className="capacity-meter__name">Async Job Queue Depth</span>
-              <span className="capacity-meter__sub">1,840 pending messages in backlog</span>
+              <span className="capacity-meter__sub">
+                {queueDepth === 0 ? '0 pending messages in backlog' : `${Math.round(queueDepth * 25)} pending messages in backlog`}
+              </span>
             </div>
             <div className="capacity-meter__val-group">
               <span className="capacity-meter__percentage">{queueDepth}%</span>

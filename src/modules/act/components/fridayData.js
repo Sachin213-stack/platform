@@ -75,44 +75,7 @@ export const AVAILABLE_VOICES = [
   },
 ];
 
-export const INITIAL_COMMAND_HISTORY = [
-  {
-    id: 'cmd-1',
-    command: 'Run cluster health check and audit error budgets.',
-    time: '18:20',
-    category: 'system',
-    status: 'completed',
-    responseSummary: 'All 18 nodes nominal. Error budget at 99.94%.',
-    latencyMs: 380,
-  },
-  {
-    id: 'cmd-2',
-    command: 'Scale checkout-v2 deployment from 4 to 8 replicas.',
-    time: '17:45',
-    category: 'action',
-    status: 'completed',
-    responseSummary: 'Scale directive dispatched to Kubernetes cluster. Pods healthy.',
-    latencyMs: 510,
-  },
-  {
-    id: 'cmd-3',
-    command: 'Summarize unmitigated anomalies in payment gateway.',
-    time: '16:30',
-    category: 'telemetry',
-    status: 'completed',
-    responseSummary: 'Redis lock contention flagged; memory cache patch proposed.',
-    latencyMs: 440,
-  },
-  {
-    id: 'cmd-4',
-    command: 'Set tactical anomaly watch for 60 minutes.',
-    time: '14:15',
-    category: 'ops',
-    status: 'completed',
-    responseSummary: 'High-frequency telemetry logging enabled for 60m.',
-    latencyMs: 290,
-  },
-];
+export const INITIAL_COMMAND_HISTORY = [];
 
 export const SIMULATION_PRESETS = [
   {

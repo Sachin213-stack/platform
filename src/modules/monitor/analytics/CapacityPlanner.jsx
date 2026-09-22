@@ -12,7 +12,20 @@ export function CapacityPlanner({
   onApplyRecommendation,
   onAskFriday,
 }) {
-  if (!resourceRunway) return null;
+  if (!resourceRunway) {
+    return (
+      <Card padding="normal" className="analytics-runway-card">
+        <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', margin: '0 0 6px', fontWeight: 600 }}>
+            Resource Runway Projections Pending
+          </p>
+          <span style={{ color: 'var(--color-text-tertiary)', fontSize: '12px' }}>
+            Cluster capacity headroom and saturation dates compute automatically once telemetry is streamed.
+          </span>
+        </div>
+      </Card>
+    );
+  }
 
   // Calculate dynamic simulated cost based on What-If spike
   const simulatedReplicas = Math.ceil(whatIfSpike / 40);

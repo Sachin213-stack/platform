@@ -49,45 +49,51 @@ export function RecentActivityFeed({
 
       {isOpen && (
         <div className="activity-feed-body">
-          <div className="activity-timeline">
-            {activities.map((act) => (
-              <div key={act.id} className="activity-timeline-item">
-                {/* Timeline node */}
-                <div className="activity-timeline-node">
-                  <div className="activity-actor-avatar" title={`${act.actor} (${act.role})`}>
-                    {act.avatar}
-                  </div>
-                  <div className="activity-timeline-line" />
-                </div>
-
-                {/* Content */}
-                <div className="activity-timeline-content">
-                  <div className="activity-timeline-header">
-                    <div className="activity-timeline-actor-info">
-                      <span className="activity-actor-name">{act.actor}</span>
-                      <span className="activity-actor-role">· {act.role}</span>
+          {activities.length === 0 ? (
+            <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+              No recent activity recorded. Platform events and deployment audit logs will appear here.
+            </div>
+          ) : (
+            <div className="activity-timeline">
+              {activities.map((act) => (
+                <div key={act.id} className="activity-timeline-item">
+                  {/* Timeline node */}
+                  <div className="activity-timeline-node">
+                    <div className="activity-actor-avatar" title={`${act.actor} (${act.role})`}>
+                      {act.avatar}
                     </div>
-                    <span className="activity-timestamp">{act.timestamp}</span>
+                    <div className="activity-timeline-line" />
                   </div>
 
-                  <div className="activity-action-row">
-                    <span className="activity-action-desc">{act.action}</span>
-                    <Badge variant={act.badgeVariant || 'neutral'} size="sm">
-                      {act.badge}
-                    </Badge>
-                  </div>
+                  {/* Content */}
+                  <div className="activity-timeline-content">
+                    <div className="activity-timeline-header">
+                      <div className="activity-timeline-actor-info">
+                        <span className="activity-actor-name">{act.actor}</span>
+                        <span className="activity-actor-role">· {act.role}</span>
+                      </div>
+                      <span className="activity-timestamp">{act.timestamp}</span>
+                    </div>
 
-                  <div className="activity-target-row">
-                    <span className="activity-target-label">Target:</span>
-                    <code className="activity-target-code">{act.target}</code>
-                    {act.hash && (
-                      <span className="activity-hash-badge">{act.hash}</span>
-                    )}
+                    <div className="activity-action-row">
+                      <span className="activity-action-desc">{act.action}</span>
+                      <Badge variant={act.badgeVariant || 'neutral'} size="sm">
+                        {act.badge}
+                      </Badge>
+                    </div>
+
+                    <div className="activity-target-row">
+                      <span className="activity-target-label">Target:</span>
+                      <code className="activity-target-code">{act.target}</code>
+                      {act.hash && (
+                        <span className="activity-hash-badge">{act.hash}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </Card>

@@ -16,7 +16,7 @@ export function DashboardTopBar({
   onBusinessChange,
   isConnected,
   onToggleConnection,
-  unreadAlertCount = 3,
+  unreadAlertCount = 0,
   notifications = [],
   onDismissNotification,
   autoRefresh,
@@ -38,8 +38,15 @@ export function DashboardTopBar({
 
   // Connect to tenant context
   const { businesses: contextBusinesses, selectedBusiness: contextSelectedBusiness, openOnboarding } = useTenant();
-  const availableBusinesses = contextBusinesses && contextBusinesses.length > 0 ? contextBusinesses : BUSINESS_PROFILES;
-  const currentBusiness = propSelectedBusiness || contextSelectedBusiness || availableBusinesses[0];
+  const availableBusinesses = contextBusinesses && contextBusinesses.length > 0 ? contextBusinesses : [];
+  const currentBusiness = propSelectedBusiness || contextSelectedBusiness || availableBusinesses[0] || {
+    id: 'primary-tenant',
+    name: 'Primary Organization',
+    type: 'ecommerce',
+    typeLabel: 'PRODUCTION',
+    region: 'Global Edge',
+    domain: 'live.aicto.io',
+  };
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -264,7 +271,9 @@ export function DashboardTopBar({
               <div className="dashboard-notifications-popover__header">
                 <div className="dashboard-notifications-popover__title">
                   <span>System Alerts</span>
-                  <Badge variant="error" size="sm">{unreadAlertCount} Unresolved</Badge>
+                  <Badge variant={unreadAlertCount > 0 ? "error" : "success"} size="sm">
+                    {unreadAlertCount > 0 ? `${unreadAlertCount} Unresolved` : 'All Systems Nominal'}
+                  </Badge>
                 </div>
               </div>
               <div className="dashboard-notifications-popover__list">
