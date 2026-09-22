@@ -19,7 +19,8 @@ import { CapacitySnapshot } from './components/CapacitySnapshot';
 import { RecentActivityFeed } from './components/RecentActivityFeed';
 import { DashboardSkeleton, DashboardErrorState } from './components/DashboardSkeleton';
 import { useTenant } from '../../shared/context/TenantContext';
-import { dashboardApi } from '../../shared/services/apiClient';
+import { dashboardApi, apiKeysApi } from '../../shared/services/apiClient';
+import { generateTrackingSnippet, getBackendBaseUrl } from '../onboarding/onboardingConfig';
 
 /**
  * DashboardPage (Operations Control Center)
@@ -33,6 +34,28 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5s default
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dashboardApiKey, setDashboardApiKey] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDashboardKey() {
+      if (!selectedBusiness?.id) return;
+      const cached = localStorage.getItem(`aicto_api_key_${selectedBusiness.id}`);
+      if (cached) {
+        if (isMounted) setDashboardApiKey(cached);
+        return;
+      }
+      try {
+        const keys = await apiKeysApi.getKeys();
+        if (keys && keys.length > 0 && keys[0].api_key && isMounted) {
+          setDashboardApiKey(keys[0].api_key);
+          localStorage.setItem(`aicto_api_key_${selectedBusiness.id}`, keys[0].api_key);
+        }
+      } catch {}
+    }
+    loadDashboardKey();
+    return () => { isMounted = false; };
+  }, [selectedBusiness?.id]);
   const [lastUpdatedSeconds, setLastUpdatedSeconds] = useState(0);
 
   const [comparisonPeriod, setComparisonPeriod] = useState('yesterday'); // 'yesterday' | 'week'
@@ -818,12 +841,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
                 color: '#34d399',
                 fontFamily: 'var(--font-mono, monospace)',
               }}>
-{`<script
-  src="https://cdn.aicto.ai/beacon.v1.js"
-  data-tenant="${selectedBusiness?.slug || 'my-store'}"
-  data-api="http://localhost:8000/api/ingestion/events"
-  async>
-</script>`}
+{generateTrackingSnippet(selectedBusiness?.id || '11111111-1111-1111-1111-111111111111', dashboardApiKey)}
               </pre>
             </div>
 
@@ -841,14 +859,14 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
                 color: '#60a5fa',
                 fontFamily: 'var(--font-mono, monospace)',
               }}>
-{`curl -X POST http://localhost:8000/api/ingestion/events \\
+{`curl -X POST ${getBackendBaseUrl()}/api/ingestion/events \\
   -H "Content-Type: application/json" \\
-  -H "X-API-Key: aicto_live_${selectedBusiness?.slug || 'key'}" \\
+  -H "X-API-Key: ${dashboardApiKey || 'sk_live_telemetry_key'}" \\
   -d '[{
+    "business_id": "${selectedBusiness?.id || '11111111-1111-1111-1111-111111111111'}",
     "event_type": "request",
     "response_time_ms": 142.5,
     "status_code": 200,
-    "revenue_amount": 89.50,
     "endpoint": "/checkout"
   }]'`}
               </pre>
@@ -857,7 +875,24 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 onClick={() => {
-                  navigator.clipboard?.writeText(`curl -X POST http://localhost:8000/api/ingestion/events -H "Content-Type: application/json" -H "X-API-Key: aicto_live_${selectedBusiness?.slug || 'key'}" -d '[{"event_type":"request","response_time_ms":142.5,"status_code":200,"revenue_amount":89.50,"endpoint":"/checkout"}]`);
+                  navigator.clipboard?.writeText(generateTrackingSnippet(selectedBusiness?.id || '11111111-1111-1111-1111-111111111111', dashboardApiKey));
+                  if (onShowToast) onShowToast({ title: 'Copied', message: 'Tracking snippet copied to clipboard', variant: 'success' });
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: 'var(--color-text-primary)',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                📋 Copy Snippet
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(`curl -X POST ${getBackendBaseUrl()}/api/ingestion/events -H "Content-Type: application/json" -H "X-API-Key: ${dashboardApiKey || 'sk_live_telemetry_key'}" -d '[{"business_id":"${selectedBusiness?.id || '11111111-1111-1111-1111-111111111111'}","event_type":"request","response_time_ms":142.5,"status_code":200,"endpoint":"/checkout"}]`);
                   if (onShowToast) onShowToast({ title: 'Copied', message: 'cURL command copied to clipboard', variant: 'success' });
                 }}
                 style={{

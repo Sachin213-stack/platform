@@ -285,11 +285,33 @@ export function generateBusinessId() {
 }
 
 /**
- * Generate the tracking script snippet code string
+ * Resolves the backend base URL for tracker hosting and ingestion.
  */
-export function generateTrackingSnippet(businessId, apiKey = '') {
+export function getBackendBaseUrl() {
+  const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '';
+  if (envUrl && /^https?:\/\//i.test(envUrl)) {
+    try {
+      return new URL(envUrl).origin;
+    } catch {}
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `${window.location.protocol}//${window.location.hostname}:8000`;
+    }
+    return window.location.origin;
+  }
+  return 'http://localhost:8000';
+}
+
+/**
+ * Single source of truth for generating the tracking script snippet.
+ * References the backend hosted tracker.js, the tenant UUID business_id, and the per-tenant API key.
+ */
+export function generateTrackingSnippet(businessId = '11111111-1111-1111-1111-111111111111', apiKey = '') {
+  const backendBase = getBackendBaseUrl();
+  const scriptSrc = `${backendBase}/static/tracker.js`;
   const apiKeyAttr = apiKey ? ` data-api-key="${apiKey}"` : '';
-  return `<script src="https://cdn.aicto.io/tracker.js" data-business-id="${businessId}"${apiKeyAttr} async></script>`;
+  return `<script src="${scriptSrc}" data-business-id="${businessId}"${apiKeyAttr} async></script>`;
 }
 
 /**

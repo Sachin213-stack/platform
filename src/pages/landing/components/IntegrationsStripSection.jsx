@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './IntegrationsStripSection.css';
+import { generateTrackingSnippet } from '../../../modules/onboarding/onboardingConfig';
 
 const INTEGRATIONS = [
   {
@@ -84,7 +85,7 @@ const INTEGRATIONS = [
 
 export function IntegrationsStripSection() {
   const [copied, setCopied] = useState(false);
-  const snippetCode = `<script src="https://cdn.ai-cto.io/telemetry.v2.js" data-tenant-id="apex_retail_live" async></script>`;
+  const snippetCode = generateTrackingSnippet('11111111-1111-1111-1111-111111111111', 'sk_live_sample_telemetry_key');
 
   const handleCopy = () => {
     navigator.clipboard.writeText(snippetCode);

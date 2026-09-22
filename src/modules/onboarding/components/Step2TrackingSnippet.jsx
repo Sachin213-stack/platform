@@ -242,7 +242,7 @@ export function Step2TrackingSnippet({
             )}
             {activeTab === 'react' && (
               <p className="onboarding-install-guide__text">
-                💡 <strong>Next.js App Router:</strong> Place inside your root <code>app/layout.jsx</code> using Next’s <code>&lt;Script src="https://cdn.aicto.io/tracker.js" data-business-id="{businessId}" strategy="afterInteractive" /&gt;</code>.
+                💡 <strong>Next.js App Router:</strong> Place inside your root <code>app/layout.jsx</code> using Next’s <code>&lt;Script src="{snippetCode.match(/src="([^"]+)"/)?.[1] || '/static/tracker.js'}" data-business-id="{businessId}" data-api-key="{apiKey}" strategy="afterInteractive" /&gt;</code>.
               </p>
             )}
             {activeTab === 'shopify' && (

@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import './IntegrationStepsSection.css';
 import { Button } from '../../../shared/components/Button';
+import { generateTrackingSnippet, getBackendBaseUrl } from '../../../modules/onboarding/onboardingConfig';
+
+const sampleBizId = '11111111-1111-1111-1111-111111111111';
+const sampleApiKey = 'sk_live_sample_telemetry_key';
+const sampleHtmlSnippet = generateTrackingSnippet(sampleBizId, sampleApiKey);
+const backendBase = getBackendBaseUrl();
 
 const FRAMEWORK_SNIPPETS = {
   html: {
     label: 'Standard HTML / Head',
-    code: `<script src="https://cdn.aicto.io/tracker.js" data-business-id="biz_acme_8921" async></script>`,
+    code: sampleHtmlSnippet,
     hint: 'Add inside the <head> tag of your main layout or index.html template.',
   },
   react: {
     label: 'Next.js / React',
-    code: `<Script src="https://cdn.aicto.io/tracker.js" data-business-id="biz_acme_8921" strategy="afterInteractive" />`,
+    code: `<Script src="${backendBase}/static/tracker.js" data-business-id="${sampleBizId}" data-api-key="${sampleApiKey}" strategy="afterInteractive" />`,
     hint: 'Place inside app/layout.jsx or _app.js using Next.js Script component.',
   },
   shopify: {
     label: 'Shopify Theme',
-    code: `<!-- Insert into theme.liquid before </head> -->\n<script src="https://cdn.aicto.io/tracker.js" data-business-id="biz_acme_8921" async></script>`,
+    code: `<!-- Insert into theme.liquid before </head> -->\n${sampleHtmlSnippet}`,
     hint: 'Paste directly into Online Store > Themes > Edit Code > theme.liquid.',
   },
 };
