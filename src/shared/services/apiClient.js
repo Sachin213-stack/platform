@@ -465,12 +465,22 @@ export const fridayApi = {
 // Telemetry Ingestion API (JS Snippet)
 // ==========================================
 export const ingestionApi = {
-  async sendEvent(eventData) {
+  async sendEvent(eventData, apiKey = null) {
+    const customHeaders = {};
+    if (apiKey) {
+      customHeaders['X-API-Key'] = apiKey;
+    }
+    const safeIdempotencyKey = eventData.idempotency_key || (
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    );
     return await request('/ingestion/events', {
       method: 'POST',
+      headers: customHeaders,
       body: JSON.stringify({
         ...eventData,
-        idempotency_key: eventData.idempotency_key || crypto.randomUUID(),
+        idempotency_key: safeIdempotencyKey,
       }),
     });
   },

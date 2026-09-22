@@ -110,6 +110,7 @@ export function Step2TrackingSnippet({
       const result = await verifySnippetInstallation({
         businessId,
         websiteUrl: formData.websiteUrl || 'https://example.com',
+        apiKey,
         simulateFailure,
       });
 

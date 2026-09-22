@@ -359,7 +359,7 @@ export function validateUrl(url) {
  * Verification Engine Integration Point:
  * Dispatches a real telemetry beacon to the FastAPI backend ingestion pipeline.
  */
-export async function verifySnippetInstallation({ businessId, websiteUrl, simulateFailure = false }) {
+export async function verifySnippetInstallation({ businessId, websiteUrl, apiKey = null, simulateFailure = false }) {
   if (simulateFailure) {
     return {
       success: false,
@@ -379,7 +379,7 @@ export async function verifySnippetInstallation({ businessId, websiteUrl, simula
       response_time_ms: 32.5,
       status_code: 200,
       payload_metadata: { source: 'snippet_installer', installer_version: '2.0.0' },
-    });
+    }, apiKey);
 
     // Confirm that real telemetry data exists in the database for this business
     const metrics = await dashboardApi.getMetrics();
