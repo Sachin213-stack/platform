@@ -1,4 +1,4 @@
-import { ingestionApi } from '../../shared/services/apiClient';
+import { ingestionApi, dashboardApi } from '../../shared/services/apiClient';
 
 /**
  * AI-CTO Onboarding Wizard Configuration & Helper Utilities
@@ -335,6 +335,7 @@ export async function verifySnippetInstallation({ businessId, websiteUrl, simula
   if (simulateFailure) {
     return {
       success: false,
+      message: `Snippet for ${businessId} not detected yet on ${websiteUrl}. Make sure it is installed inside the <head> tag and try again.`,
       error: `Snippet for ${businessId} not detected yet on ${websiteUrl}. Make sure it is installed inside the <head> tag and try again.`,
       detectedAt: null,
       httpStatus: 200,
@@ -352,37 +353,46 @@ export async function verifySnippetInstallation({ businessId, websiteUrl, simula
       payload_metadata: { source: 'snippet_installer', installer_version: '2.0.0' },
     });
 
+    // Confirm that real telemetry data exists in the database for this business
+    const metrics = await dashboardApi.getMetrics();
+    const hasLiveTelemetry = Boolean(metrics && (metrics.has_live_data || (metrics.total_events_count && metrics.total_events_count > 0)));
+
+    if (!hasLiveTelemetry) {
+      return {
+        success: false,
+        message: `Snippet for ${businessId} not detected yet. No telemetry events confirmed in database.`,
+        error: `Snippet for ${businessId} not detected yet on ${websiteUrl}. Make sure it is installed inside the <head> tag and transmitting events.`,
+        detectedAt: null,
+        httpStatus: 200,
+      };
+    }
+
     const latency = Math.round(performance.now() - startTime);
 
     return {
       success: true,
-      message: 'Snippet detected & event accepted by FastAPI ingestion stream',
+      message: 'Snippet detected & telemetry event confirmed in database',
       businessId,
-      eventId: res.event_id,
+      eventId: res?.event_id || metrics.recent_telemetry_events?.[0]?.id,
       detectedAt: new Date().toISOString(),
       firstEventLatency: `${latency || 28}ms`,
       clusterRegion: 'us-east-1 (FastAPI + Redis Stream)',
       clientIp: '127.0.0.1 (Local Gateway)',
-      sampleEvent: {
+      sampleEvent: metrics.recent_telemetry_events?.[0] || {
         type: 'BEACON_VERIFICATION',
         url: websiteUrl,
         time: 'Just now',
-        status: res.status,
+        status: res?.status || 200,
       },
     };
   } catch (err) {
+    const errorMsg = err?.message || 'Snippet verification failed: telemetry probe was not accepted.';
     return {
-      success: true,
-      message: 'Snippet detected — telemetry stream active',
-      businessId,
-      detectedAt: new Date().toISOString(),
-      firstEventLatency: '34ms',
-      clusterRegion: 'us-east-1 (Local Gateway)',
-      sampleEvent: {
-        type: 'PAGE_VIEW',
-        url: websiteUrl,
-        time: 'Just now',
-      },
+      success: false,
+      message: errorMsg,
+      error: errorMsg,
+      detectedAt: null,
+      httpStatus: err?.status || 500,
     };
   }
 }
