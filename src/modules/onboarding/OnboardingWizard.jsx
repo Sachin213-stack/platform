@@ -10,6 +10,7 @@ import { Step3KpiConfirmation } from './components/Step3KpiConfirmation';
 import { Step4Integrations } from './components/Step4Integrations';
 import { Step5ReviewFinish } from './components/Step5ReviewFinish';
 import { BUSINESS_TYPES, getDetectedTimezone, generateBusinessId } from './onboardingConfig';
+import { getStoredUser } from '../../shared/services/apiClient';
 
 const INITIAL_FORM_DATA = {
   businessName: '',
@@ -24,7 +25,7 @@ const INITIAL_FORM_DATA = {
 };
 
 export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
-  const { addBusiness, saveWizardDraft, loadWizardDraft, clearWizardDraft } = useTenant();
+  const { selectedBusiness, addBusiness, saveWizardDraft, loadWizardDraft, clearWizardDraft } = useTenant();
   const { addToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -41,18 +42,22 @@ export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
         setCurrentStep(draft.currentStep || 1);
         setCompletedSteps(draft.completedSteps || []);
       } else {
-        // Initialize fresh
+        // Initialize fresh - ensure businessId matches the database UUID
         const detectedTz = getDetectedTimezone();
+        const stored = getStoredUser();
+        const existingBizId = stored?.business_id || (selectedBusiness?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedBusiness.id) ? selectedBusiness.id : null);
+        const resolvedBizId = existingBizId || generateBusinessId();
+
         setFormData({
           ...INITIAL_FORM_DATA,
           timezone: detectedTz,
-          businessId: generateBusinessId('store'),
+          businessId: resolvedBizId,
         });
         setCurrentStep(1);
         setCompletedSteps([]);
       }
     }
-  }, [isOpen, loadWizardDraft]);
+  }, [isOpen, loadWizardDraft, selectedBusiness]);
 
   // Auto-save draft on changes
   useEffect(() => {
@@ -68,14 +73,7 @@ export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
 
   // Field change handler
   const handleFieldChange = useCallback((field, value) => {
-    setFormData((prev) => {
-      const next = { ...prev, [field]: value };
-      // If business name changes and businessId is uncustomized, regenerate ID
-      if (field === 'businessName' && value && (!prev.businessId || prev.businessId.startsWith('biz_live_store'))) {
-        next.businessId = generateBusinessId(value);
-      }
-      return next;
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   // Navigation handlers

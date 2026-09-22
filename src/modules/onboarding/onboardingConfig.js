@@ -271,12 +271,17 @@ export const INTEGRATIONS_LIST = [
 ];
 
 /**
- * Generate a unique Business ID consistent with the platform standard
+ * Generate a unique Business ID consistent with the backend UUID standard
  */
-export function generateBusinessId(businessName = '') {
-  const clean = businessName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || 'tenant';
-  const randomHex = Math.random().toString(16).substring(2, 8);
-  return `biz_live_${clean}_${randomHex}`;
+export function generateBusinessId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /**

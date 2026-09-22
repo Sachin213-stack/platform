@@ -73,7 +73,7 @@ export function Step5ReviewFinish({
               <div className="onboarding-review-item">
                 <span className="onboarding-review-item__label">Business ID</span>
                 <span className="onboarding-review-item__val onboarding-review-item__val--mono">
-                  {formData.businessId || 'biz_live_...'}
+                  {formData.businessId || '00000000-0000-0000-0000-000000000000'}
                 </span>
               </div>
 

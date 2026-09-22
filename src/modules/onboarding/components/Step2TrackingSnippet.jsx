@@ -7,6 +7,8 @@ import {
   generateTrackingSnippet,
   verifySnippetInstallation,
 } from '../onboardingConfig';
+import { getStoredUser } from '../../../shared/services/apiClient';
+import { useTenant } from '../../../shared/context/TenantContext';
 
 export function Step2TrackingSnippet({
   formData,
@@ -15,6 +17,10 @@ export function Step2TrackingSnippet({
   onBack,
   onCancel,
 }) {
+  const { selectedBusiness } = useTenant();
+  const stored = getStoredUser();
+  const activeDbUuid = stored?.business_id || (selectedBusiness?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedBusiness.id) ? selectedBusiness.id : null);
+
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('html'); // 'html' | 'gtm' | 'react' | 'shopify'
   const [verificationState, setVerificationState] = useState(formData.verificationStatus || 'idle'); // 'idle' | 'checking' | 'success' | 'failed'
@@ -22,15 +28,18 @@ export function Step2TrackingSnippet({
   const [liveEventCount, setLiveEventCount] = useState(formData.verificationStatus === 'success' ? 4 : 0);
   const eventIntervalRef = useRef(null);
 
-  // Ensure Business ID exists
+  // Ensure Business ID exists and matches Postgres UUID format
   useEffect(() => {
-    if (!formData.businessId) {
-      const generated = generateBusinessId(formData.businessName || 'store');
-      onChange('businessId', generated);
+    const isCurrentValidUuid = formData.businessId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(formData.businessId);
+    if (!isCurrentValidUuid) {
+      const targetId = activeDbUuid || generateBusinessId();
+      onChange('businessId', targetId);
     }
-  }, [formData.businessId, formData.businessName, onChange]);
+  }, [formData.businessId, activeDbUuid, onChange]);
 
-  const businessId = formData.businessId || 'biz_live_new_01';
+  const businessId = (formData.businessId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(formData.businessId))
+    ? formData.businessId
+    : (activeDbUuid || generateBusinessId());
   const snippetCode = generateTrackingSnippet(businessId);
 
   // Live telemetry pulse simulation once verified
