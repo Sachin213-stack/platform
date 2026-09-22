@@ -287,8 +287,9 @@ export function generateBusinessId() {
 /**
  * Generate the tracking script snippet code string
  */
-export function generateTrackingSnippet(businessId) {
-  return `<script src="https://cdn.aicto.io/tracker.js" data-business-id="${businessId}" async></script>`;
+export function generateTrackingSnippet(businessId, apiKey = '') {
+  const apiKeyAttr = apiKey ? ` data-api-key="${apiKey}"` : '';
+  return `<script src="https://cdn.aicto.io/tracker.js" data-business-id="${businessId}"${apiKeyAttr} async></script>`;
 }
 
 /**

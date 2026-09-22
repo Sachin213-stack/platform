@@ -534,9 +534,25 @@ export const healthApi = {
   },
 };
 
+// ==========================================
+// API Keys Management API
+// ==========================================
+export const apiKeysApi = {
+  async getKeys() {
+    return await request('/users/api-keys', { method: 'GET' });
+  },
+  async createKey(name = 'Website Telemetry Snippet Key') {
+    return await request('/users/api-keys', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  },
+};
+
 export default {
   auth: authApi,
   user: userApi,
+  apiKeys: apiKeysApi,
   dashboard: dashboardApi,
   friday: fridayApi,
   ingestion: ingestionApi,

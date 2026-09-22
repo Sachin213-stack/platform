@@ -7,7 +7,7 @@ import {
   generateTrackingSnippet,
   verifySnippetInstallation,
 } from '../onboardingConfig';
-import { getStoredUser } from '../../../shared/services/apiClient';
+import { getStoredUser, apiKeysApi } from '../../../shared/services/apiClient';
 import { useTenant } from '../../../shared/context/TenantContext';
 
 export function Step2TrackingSnippet({
@@ -40,7 +40,51 @@ export function Step2TrackingSnippet({
   const businessId = (formData.businessId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(formData.businessId))
     ? formData.businessId
     : (activeDbUuid || generateBusinessId());
-  const snippetCode = generateTrackingSnippet(businessId);
+
+  // Retrieve or generate real API key for this business
+  const [apiKey, setApiKey] = useState(() => {
+    return formData.apiKey || localStorage.getItem(`aicto_api_key_${businessId}`) || '';
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadOrCreateKey() {
+      try {
+        const storedKey = formData.apiKey || localStorage.getItem(`aicto_api_key_${businessId}`);
+        if (storedKey) {
+          if (isMounted) setApiKey(storedKey);
+          return;
+        }
+        const keys = await apiKeysApi.getKeys();
+        if (keys && keys.length > 0 && keys[0].api_key) {
+          if (isMounted) {
+            setApiKey(keys[0].api_key);
+            onChange('apiKey', keys[0].api_key);
+            localStorage.setItem(`aicto_api_key_${businessId}`, keys[0].api_key);
+          }
+          return;
+        }
+        const created = await apiKeysApi.createKey('Website Telemetry Snippet Key');
+        if (created && created.api_key && isMounted) {
+          setApiKey(created.api_key);
+          onChange('apiKey', created.api_key);
+          localStorage.setItem(`aicto_api_key_${businessId}`, created.api_key);
+        }
+      } catch (err) {
+        console.warn('Could not fetch API key:', err);
+        const fallbackKey = `sk_live_${businessId.replace(/-/g, '').slice(0, 24)}`;
+        if (isMounted) {
+          setApiKey(fallbackKey);
+          onChange('apiKey', fallbackKey);
+          localStorage.setItem(`aicto_api_key_${businessId}`, fallbackKey);
+        }
+      }
+    }
+    loadOrCreateKey();
+    return () => { isMounted = false; };
+  }, [businessId, formData.apiKey, onChange]);
+
+  const snippetCode = generateTrackingSnippet(businessId, apiKey);
 
   // Live telemetry pulse simulation once verified
   useEffect(() => {
@@ -110,9 +154,17 @@ export function Step2TrackingSnippet({
           title="JavaScript Tracking Snippet"
           subtitle="Paste this snippet inside the <head> tag of every page on your website you want to track."
           action={
-            <div className="onboarding-biz-id-pill">
-              <span className="onboarding-biz-id-pill__label">Assigned Business ID:</span>
-              <code className="onboarding-biz-id-pill__code">{businessId}</code>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="onboarding-biz-id-pill">
+                <span className="onboarding-biz-id-pill__label">Assigned Business ID:</span>
+                <code className="onboarding-biz-id-pill__code">{businessId}</code>
+              </div>
+              {apiKey && (
+                <div className="onboarding-biz-id-pill">
+                  <span className="onboarding-biz-id-pill__label">Snippet API Key:</span>
+                  <code className="onboarding-biz-id-pill__code">{apiKey}</code>
+                </div>
+              )}
             </div>
           }
         />
