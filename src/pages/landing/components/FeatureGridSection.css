@@ -51,7 +51,7 @@
 /* Grid */
 .feat-grid__cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
   gap: 1.75rem;
 }
 
@@ -283,9 +283,10 @@
   border-radius: 3px;
 }
 
-/* Audit and Sec snippets */
+/* Audit, Sec & Logs snippets */
 .feat-grid__mock-code,
-.feat-grid__mock-key {
+.feat-grid__mock-key,
+.feat-grid__mock-log-line {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   color: #475569;
@@ -296,6 +297,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.feat-grid__mock-log-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.feat-grid__mock-log-badge--stream {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #be123c;
+  background: #ffe4e8;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 /* Action Link */

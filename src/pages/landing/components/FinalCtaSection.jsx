@@ -19,8 +19,7 @@ export function FinalCtaSection({ onStartOnboarding, onBookDemo }) {
             </h2>
 
             <p className="final-cta__subtitle">
-              Deploy our zero-overhead edge telemetry snippet or connect via API.
-              FRIDAY AI will baseline your traffic and begin autonomous anomaly detection immediately.
+              Deploy our zero-overhead edge telemetry snippet, stream logs via Redis, and let FRIDAY AI-CTO protect your infrastructure with autonomous diagnostics.
             </p>
 
             <div className="final-cta__actions">
@@ -59,7 +58,7 @@ export function FinalCtaSection({ onStartOnboarding, onBookDemo }) {
               </div>
               <div className="final-cta__trust-item">
                 <span className="final-cta__check">✓</span>
-                <span>Instant baseline & anomaly shield</span>
+                <span>100% Authentic Telemetry</span>
               </div>
             </div>
           </div>

@@ -92,25 +92,25 @@ export function ProblemSolutionSection() {
               <li className="prob-sol__item prob-sol__item--solution">
                 <div className="prob-sol__bullet prob-sol__bullet--pink">✓</div>
                 <div>
-                  <strong>Sub-second telemetry & anomaly detection:</strong> AI evaluates multi-variate deviations in &lt;180ms, catching subtle degradation before customers notice.
+                  <strong>Sub-second telemetry & authentic anomaly detection:</strong> Real multi-variate metrics evaluated in &lt;180ms. Zero synthetic demo noise — only genuine data from your live endpoints.
                 </div>
               </li>
               <li className="prob-sol__item prob-sol__item--solution">
                 <div className="prob-sol__bullet prob-sol__bullet--pink">✓</div>
                 <div>
-                  <strong>Instant AI root-cause diagnostics:</strong> FRIDAY analyzes telemetry correlations and gives precise diagnosis: "Thread starvation in checkout-v2 pod replica 3".
+                  <strong>FRIDAY AI-CTO engineering intelligence:</strong> Powered by Moonshot AI Kimi K3. Get two-way conversational voice answers, architecture guidance, and pinpoint root-cause diagnostics.
                 </div>
               </li>
               <li className="prob-sol__item prob-sol__item--solution">
                 <div className="prob-sol__bullet prob-sol__bullet--pink">✓</div>
                 <div>
-                  <strong>1-Click & automated remediation:</strong> Pre-validated mitigation actions (auto-scaling pods, clearing deadlocks, cache warming) executed in milliseconds.
+                  <strong>1-Click & automated remediation:</strong> Pre-validated mitigation actions (auto-scaling pods, clearing deadlocks, cache warming) executed with instant rollback safety.
                 </div>
               </li>
               <li className="prob-sol__item prob-sol__item--solution">
                 <div className="prob-sol__bullet prob-sol__bullet--pink">✓</div>
                 <div>
-                  <strong>Predictive capacity forecasting:</strong> ML models project traffic & compute needs 7 days ahead, ensuring 100% capacity headroom at optimal cloud cost.
+                  <strong>Live Redis log streaming & capacity forecasting:</strong> Sub-second log ingestion paired with ML models projecting compute needs 7 days ahead for 100% capacity headroom.
                 </div>
               </li>
             </ul>

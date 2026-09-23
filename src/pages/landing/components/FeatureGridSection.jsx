@@ -5,15 +5,29 @@ const FEATURES = [
   {
     id: 'dashboard',
     category: 'Operations Control Center',
-    title: 'Real-Time Telemetry & Instant Incident Triage',
+    title: 'Authentic Telemetry & Incident Triage',
     description:
-      'Monitor multi-tenant infrastructure with sub-second health scores, p95 latency heatmaps, and 1-click anomaly mitigation.',
+      'Monitor multi-tenant infrastructure with sub-second health scores, p95 latency heatmaps, and 1-click anomaly mitigation backed by genuine telemetry.',
     tag: 'Live Telemetry',
     mockupType: 'dashboard',
     preview: {
       stat: '99.99% Uptime',
       metric: '142ms Avg Latency',
       badge: '0 Active Incidents',
+    },
+  },
+  {
+    id: 'logs',
+    category: 'Real-Time Observability',
+    title: 'Live-Tail Log Streaming & Client Error Bridging',
+    description:
+      'High-throughput Redis Stream log ingestion, Server-Sent Events (SSE) live-tail, automatic frontend JS crash capture, and 1-click test probes.',
+    tag: 'Redis Streams',
+    mockupType: 'logs',
+    preview: {
+      stat: 'Sub-Second Tail',
+      metric: 'Redis Stream Active',
+      badge: 'Live Log Ingestion',
     },
   },
   {
@@ -32,30 +46,30 @@ const FEATURES = [
   },
   {
     id: 'friday-ai',
-    category: 'Autonomous Assistant',
-    title: 'FRIDAY Voice & Chat Engineering Intelligence',
+    category: 'Autonomous AI-CTO & Partner',
+    title: 'FRIDAY Neural Voice & Engineering Intelligence',
     description:
-      'Converse naturally with your infrastructure: Ask "Why did latency spike on checkout?" or command "Simulate 3x Black Friday load".',
-    tag: 'Voice & Chat',
+      'Powered by Moonshot AI (Kimi K3) via NVIDIA NIM. Converse via fluid, low-latency two-way voice for system design, code analysis, debugging, and 1-click autonomous operational mitigations.',
+    tag: 'Voice & Kimi K3',
     mockupType: 'friday',
     preview: {
-      stat: 'Voice Enabled',
-      metric: 'Root-Cause Ingest',
-      badge: '420ms Resolution',
+      stat: 'Two-Way Voice',
+      metric: 'Kimi K3 MoE Engine',
+      badge: 'Zero Hallucination',
     },
   },
   {
-    id: 'billing',
-    category: 'Usage & Transparency',
-    title: 'Real-Time Event Metering & Tier Management',
+    id: 'integrations',
+    category: 'Universal Ingestion',
+    title: '2-Minute Snippet & Framework Integrations',
     description:
-      'Granular telemetry event tracking, automated business tier upgrades, invoice logs, and complete cloud ROI visibility.',
-    tag: 'Metering & Tiers',
-    mockupType: 'billing',
+      'Deploy zero-overhead tracker.js, or connect Shopify, Stripe, Cloudflare, Next.js, and Kubernetes webhooks in minutes.',
+    tag: '2-Min Snippet',
+    mockupType: 'integrations',
     preview: {
-      stat: '74% Event Quota',
-      metric: 'Enterprise Plan',
-      badge: 'Zero Overage Shock',
+      stat: 'Universal Edge',
+      metric: '< 1.2 KB Script',
+      badge: 'Zero Client Overhead',
     },
   },
   {
@@ -84,6 +98,20 @@ const FEATURES = [
       stat: '256-bit Encryption',
       metric: 'Multi-Tenant Shield',
       badge: 'RBAC Active',
+    },
+  },
+  {
+    id: 'billing',
+    category: 'Usage & Transparency',
+    title: 'Real-Time Event Metering & Tier Management',
+    description:
+      'Granular telemetry event tracking, automated business tier upgrades, invoice logs, and complete cloud ROI visibility.',
+    tag: 'Metering & Tiers',
+    mockupType: 'billing',
+    preview: {
+      stat: '74% Event Quota',
+      metric: 'Enterprise Plan',
+      badge: 'Zero Overage Shock',
     },
   },
 ];
@@ -145,6 +173,19 @@ export function FeatureGridSection({ onExploreFeature }) {
                     </div>
                   )}
 
+                  {f.mockupType === 'logs' && (
+                    <div className="feat-grid__mock-logs">
+                      <div className="feat-grid__mock-row">
+                        <span className="feat-grid__mock-val">{f.preview.stat}</span>
+                        <span className="feat-grid__mock-pill feat-grid__mock-pill--green">SSE Live Tail</span>
+                      </div>
+                      <div className="feat-grid__mock-log-line">
+                        <span className="feat-grid__mock-log-badge feat-grid__mock-log-badge--stream">STREAM</span>
+                        <span>[INFO] /api/checkout 200 OK (38ms)</span>
+                      </div>
+                    </div>
+                  )}
+
                   {f.mockupType === 'analytics' && (
                     <div className="feat-grid__mock-analytics">
                       <div className="feat-grid__mock-row">
@@ -164,10 +205,22 @@ export function FeatureGridSection({ onExploreFeature }) {
                     <div className="feat-grid__mock-friday">
                       <div className="feat-grid__mock-bubble">
                         <span className="feat-grid__mock-ai-icon">✨</span>
-                        <span>"Checked checkout-v2: Thread starvation resolved."</span>
+                        <span>"Checked checkout-v2: Thread contention resolved."</span>
                       </div>
                       <div className="feat-grid__mock-wave">
                         <span /><span /><span /><span /><span /><span />
+                      </div>
+                    </div>
+                  )}
+
+                  {f.mockupType === 'integrations' && (
+                    <div className="feat-grid__mock-integrations">
+                      <div className="feat-grid__mock-row">
+                        <span className="feat-grid__mock-val">{f.preview.stat}</span>
+                        <span className="feat-grid__mock-pill feat-grid__mock-pill--blue">&lt;head&gt; Async</span>
+                      </div>
+                      <div className="feat-grid__mock-code">
+                        &lt;script src=".../tracker.js" async&gt;
                       </div>
                     </div>
                   )}

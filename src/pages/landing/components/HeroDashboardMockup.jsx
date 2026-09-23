@@ -38,8 +38,8 @@ export function HeroDashboardMockup({ onTryInteractive }) {
       <div className="hero-cluster__float hero-cluster__float--right">
         <div className="hero-cluster__float-icon hero-cluster__float-icon--gold">✨</div>
         <div className="hero-cluster__float-text">
-          <div className="hero-cluster__float-title">FRIDAY Autonomous AI</div>
-          <div className="hero-cluster__float-sub">Prevented 3 outages today</div>
+          <div className="hero-cluster__float-title">FRIDAY AI-CTO Co-Pilot</div>
+          <div className="hero-cluster__float-sub">Two-way neural voice & auto-remediation</div>
         </div>
       </div>
 
@@ -224,18 +224,18 @@ export function HeroDashboardMockup({ onTryInteractive }) {
           <div className="hero-card__ai-headline">
             {anomalyResolved
               ? 'Replica capacity scaled (4 → 8) & cache warmed'
-              : 'Checkout Latency Spike (p99 > 820ms)'}
+              : 'Traffic Surge & Latency Drift on checkout-v2'}
           </div>
 
           <div className="hero-card__ai-box">
             <div className="hero-card__ai-box-header">
-              <span className="hero-card__ai-box-tag">✨ FRIDAY AI Root-Cause</span>
-              <span className="hero-card__ai-confidence">99.2% confidence</span>
+              <span className="hero-card__ai-box-tag">✨ FRIDAY AI-CTO Analysis</span>
+              <span className="hero-card__ai-confidence">Moonshot Kimi K3 Engine</span>
             </div>
             <p className="hero-card__ai-box-text">
               {anomalyResolved
-                ? 'p99 latency normalized to 142ms. Session cache hit ratio stabilized at 97.4%.'
-                : 'Sudden surge in cart checkout queries causing thread pool exhaustion on 4 pods.'}
+                ? 'p99 latency normalized to 142ms. Multi-metric correlation verified zero customer conversion loss.'
+                : 'Sudden cart checkout surge causing thread pool contention on 4 pods. Auto-scale staged.'}
             </p>
           </div>
 

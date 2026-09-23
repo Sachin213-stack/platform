@@ -12,27 +12,41 @@ export function DemoModal({ isOpen, onClose, onLaunchSandbox }) {
     {
       id: 'flash-sale',
       title: 'E-Commerce Flash Sale Surge',
-      desc: 'Simulate 10x traffic spike, p99 latency evaluation, and automated pod scaling.',
+      desc: 'Evaluate 10x traffic spike, p99 latency degradation, and automated horizontal pod autoscaling.',
       badge: 'High Concurrency',
     },
     {
       id: 'checkout-ano',
-      title: 'Checkout Service Anomaly & FRIDAY Triage',
-      desc: 'Inject artificial database pool lock and watch FRIDAY AI isolate the root cause in 420ms.',
-      badge: 'Root-Cause AI',
+      title: 'Checkout Anomaly & FRIDAY AI-CTO Triage',
+      desc: 'Simulate database pool contention and watch FRIDAY AI-CTO diagnose the root cause with two-way voice.',
+      badge: 'Neural AI-CTO',
+    },
+    {
+      id: 'live-logs',
+      title: 'Live Observability & Log Streaming',
+      desc: 'Inspect real-time application logs streamed over Redis Streams and SSE with sub-second latency.',
+      badge: 'SSE Live-Tail',
     },
     {
       id: 'capacity-pred',
-      title: '7-Day Capacity Surge Forecasting',
-      desc: 'Evaluate seasonal machine learning models against 14 days of simulated historical telemetry.',
+      title: '7-Day Predictive Capacity Forecasting',
+      desc: 'Evaluate proactive machine learning forecasting to prevent CPU/memory bottlenecks before outages occur.',
       badge: 'Predictive ML',
     },
   ];
 
   const handleSimulate = (scenarioId) => {
-    setStatusMessage(`Scenario "${scenarios.find(s => s.id === scenarioId)?.title}" loaded into sandbox!`);
+    setStatusMessage(`Scenario "${scenarios.find((s) => s.id === scenarioId)?.title}" loaded into sandbox!`);
     setTimeout(() => {
-      onLaunchSandbox(scenarioId === 'capacity-pred' ? 'analytics' : 'dashboard');
+      if (scenarioId === 'checkout-ano') {
+        onLaunchSandbox('friday-ai');
+      } else if (scenarioId === 'live-logs') {
+        onLaunchSandbox('logs');
+      } else if (scenarioId === 'capacity-pred') {
+        onLaunchSandbox('analytics');
+      } else {
+        onLaunchSandbox('dashboard');
+      }
     }, 800);
   };
 

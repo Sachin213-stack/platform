@@ -5,9 +5,9 @@ const VALUE_STEPS = [
   {
     step: '01',
     phase: 'MONITOR',
-    title: 'Sub-Second Telemetry & Edge Stream',
+    title: 'Sub-Second Telemetry & Redis Log Stream',
     description:
-      'Lightweight edge sensors ingest p95 latencies, HTTP error rates, DB pool saturation, and checkout conversions in real-time with zero client CPU lag.',
+      'Lightweight edge sensors and Redis Streams ingest p95 latencies, live server logs, frontend JavaScript errors, and checkout conversions in real-time with zero client CPU lag.',
     accent: 'pink',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -15,7 +15,7 @@ const VALUE_STEPS = [
       </svg>
     ),
     visual: {
-      tag: 'Edge Ingestion Active',
+      tag: 'Edge Ingestion & Logs Active',
       stat1: '18ms',
       label1: 'Ingest Latency',
       stat2: '14.2k/s',
@@ -28,7 +28,7 @@ const VALUE_STEPS = [
     phase: 'DETECT',
     title: 'AI Anomaly Modeling & Root-Cause Pinpoint',
     description:
-      'Continuous machine learning models seasonal baselines and isolates true infrastructure degradation from expected traffic surges in under 180ms.',
+      'Continuous machine learning models seasonal baselines and isolates true infrastructure degradation from expected traffic surges in under 180ms with zero synthetic noise.',
     accent: 'yellow',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -47,9 +47,9 @@ const VALUE_STEPS = [
   {
     step: '03',
     phase: 'ACT',
-    title: 'FRIDAY AI Assistant & Auto-Remediation',
+    title: 'FRIDAY AI-CTO & Auto-Remediation',
     description:
-      'Get conversational engineering answers and execute 1-click mitigation actions — auto-scaling replicas, flushing blocked caches, or rolling back canary bugs.',
+      'Converse naturally via voice or chat with your AI-CTO powered by Moonshot AI Kimi K3, and execute 1-click mitigation actions — auto-scaling replicas, flushing caches, or rollback.',
     accent: 'coral',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -57,11 +57,11 @@ const VALUE_STEPS = [
       </svg>
     ),
     visual: {
-      tag: 'FRIDAY Ops Orchestrator',
+      tag: 'FRIDAY AI-CTO Co-Pilot',
       stat1: '420ms',
       label1: 'Action Execution',
-      stat2: '1-Click',
-      label2: 'Auto Mitigation',
+      stat2: 'Two-Way',
+      label2: 'Neural Voice',
       highlight: 'Voice & chat orchestration',
     },
   },

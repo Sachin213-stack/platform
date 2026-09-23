@@ -20,7 +20,7 @@ export function LandingFooter({ onExploreApp, onStartFree, onLogin }) {
             </div>
 
             <p className="landing-footer__tagline">
-              Autonomous ops platform engineered for real-time telemetry monitoring, anomaly detection, predictive capacity forecasting, and FRIDAY AI orchestration.
+              Autonomous engineering platform engineered for 100% authentic telemetry monitoring, live Redis log streaming, predictive capacity forecasting, and FRIDAY AI-CTO neural voice orchestration.
             </p>
 
             <div className="landing-footer__system-status">
@@ -39,13 +39,23 @@ export function LandingFooter({ onExploreApp, onStartFree, onLogin }) {
                 </button>
               </li>
               <li>
+                <button type="button" className="landing-footer__link-btn" onClick={() => onExploreApp('logs')}>
+                  Live Logs & Observability
+                </button>
+              </li>
+              <li>
                 <button type="button" className="landing-footer__link-btn" onClick={() => onExploreApp('analytics')}>
                   Capacity & Forecasting
                 </button>
               </li>
               <li>
                 <button type="button" className="landing-footer__link-btn" onClick={() => onExploreApp('friday-ai')}>
-                  FRIDAY AI Assistant
+                  FRIDAY AI-CTO Voice
+                </button>
+              </li>
+              <li>
+                <button type="button" className="landing-footer__link-btn" onClick={() => onExploreApp('integrations')}>
+                  Telemetry & Integrations
                 </button>
               </li>
               <li>

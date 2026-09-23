@@ -31,8 +31,8 @@ export function LandingHero({ onStartFree, onBookDemo }) {
 
         {/* Subtext */}
         <p className="landing-hero__subtext">
-          Sub-second real-time telemetry, AI-driven root-cause anomaly detection,
-          predictive capacity forecasting, and FRIDAY autonomous ops orchestration — keeping your digital stack resilient around the clock.
+          Sub-second real-time telemetry, live Redis log streaming, AI-driven root-cause anomaly detection,
+          and FRIDAY — your autonomous voice and chat AI-CTO keeping your digital stack resilient around the clock.
         </p>
 
         {/* Dual CTAs */}
@@ -71,7 +71,7 @@ export function LandingHero({ onStartFree, onBookDemo }) {
         <div className="landing-hero__micro-trust">
           <span>✓ 2-Minute Snippet Setup</span>
           <span className="landing-hero__bullet">•</span>
-          <span>✓ No Credit Card Required</span>
+          <span>✓ 100% Authentic Telemetry (Zero Fake Demo Data)</span>
           <span className="landing-hero__bullet">•</span>
           <span>✓ Zero Client-Side Overhead</span>
         </div>
