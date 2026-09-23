@@ -159,11 +159,23 @@ export default function AppShell({
   const handleNavClick = useCallback(
     (id) => {
       setCurrentNav(id);
+      if (id === 'friday-ai' || id === 'act') {
+        setIsVoiceOverlayOpen(false);
+        setIsCompanionMinimized(false);
+      }
       if (onNavChange) onNavChange(id);
       closeSidebar();
     },
     [onNavChange, closeSidebar]
   );
+
+  useEffect(() => {
+    setCurrentNav(activeNav);
+    if ((activeNav === 'friday-ai' || activeNav === 'act') && isVoiceOverlayOpen) {
+      setIsVoiceOverlayOpen(false);
+      setIsCompanionMinimized(false);
+    }
+  }, [activeNav, isVoiceOverlayOpen]);
 
   /* ── Keyboard shortcut: Ctrl+B to toggle collapse & Alt+V for Voice Co-Pilot ── */
   useEffect(() => {

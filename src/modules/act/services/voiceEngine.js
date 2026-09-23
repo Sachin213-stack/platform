@@ -40,6 +40,13 @@ class VoiceEngine {
     // Active SSE / AbortController
     this.activeAbortController = null;
 
+    // Playback session synchronization & cancellation token
+    this.playbackSessionId = 0;
+    this.activeSessionId = 0;
+    this.isSpeechSynthesisActive = false;
+    this.lastSpeechEndTime = 0;
+    this.lastSpokenText = '';
+
     // Listeners / Callbacks
     this.callbacks = {
       onStateChange: () => {},
@@ -285,27 +292,49 @@ class VoiceEngine {
   // Instant Barge-In (Interruption)
   // ─────────────────────────────────────────────────────────────────
   interrupt() {
+    // 1. Invalidate session ID so all async callbacks and in-flight promises abort immediately
+    this.activeSessionId = ++this.playbackSessionId;
+    this.isSpeechSynthesisActive = false;
+
+    // 2. Abort in-flight network requests
     if (this.activeAbortController) {
-      this.activeAbortController.abort();
+      try {
+        this.activeAbortController.abort();
+      } catch {}
       this.activeAbortController = null;
     }
 
+    // 3. Cleanly stop HTML5 Audio Player WITHOUT triggering onerror fallback!
     if (this.audioPlayer) {
-      this.audioPlayer.pause();
-      this.audioPlayer.src = '';
-      this.isPlayingAudio = false;
+      this.audioPlayer.onended = null;
+      this.audioPlayer.onerror = null;
+      this.audioPlayer.onplay = null;
+      this.audioPlayer.onpause = null;
+      try {
+        this.audioPlayer.pause();
+      } catch {}
+      try {
+        this.audioPlayer.removeAttribute('src');
+        this.audioPlayer.load();
+      } catch {}
     }
 
+    // 4. Cancel browser SpeechSynthesis
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
       } catch {}
     }
 
+    // 5. Clear silence VAD timer
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
+
+    this.isPlayingAudio = false;
+    this.lastSpeechEndTime = Date.now();
+    this.callbacks.onStateChange('idle');
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -330,6 +359,9 @@ class VoiceEngine {
       if (onEnd) onEnd();
       return;
     }
+
+    const currentSessionId = this.activeSessionId;
+    this.lastSpokenText = cleanText;
 
     const selectedVoice = voice || this.settings.selectedVoice || 'friday-core-female';
     const playbackRate = rate || this.settings.speechRate || 1.0;
@@ -356,11 +388,16 @@ class VoiceEngine {
         signal: this.activeAbortController.signal,
       });
 
+      // Guard: If user interrupted or started a new session while fetch was in-flight
+      if (currentSessionId !== this.activeSessionId) return;
+
       if (!response.ok) {
         throw new Error(`TTS HTTP error: ${response.status}`);
       }
 
       const audioBlob = await response.blob();
+      if (currentSessionId !== this.activeSessionId) return;
+
       const audioUrl = URL.createObjectURL(audioBlob);
 
       if (!this.audioPlayer) {
@@ -368,6 +405,9 @@ class VoiceEngine {
         this.audioPlayer.crossOrigin = 'anonymous';
       }
 
+      // Detach any previous handlers before binding new source
+      this.audioPlayer.onended = null;
+      this.audioPlayer.onerror = null;
       this.audioPlayer.src = audioUrl;
 
       // Connect audio player to ttsAnalyser so the orb pulses to Friday's voice
@@ -381,8 +421,7 @@ class VoiceEngine {
         }
       }
 
-      // CRITICAL AUTOPLAY POLICY UNMUTING GUARD:
-      // If Web Audio API is suspended, resume it so audio routes to speakers without being muted
+      // Autoplay policy guard
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
         try {
           await this.audioCtx.resume();
@@ -395,61 +434,83 @@ class VoiceEngine {
       this.callbacks.onStateChange('speaking');
 
       this.audioPlayer.onended = () => {
+        if (currentSessionId !== this.activeSessionId) return;
         this.isPlayingAudio = false;
+        this.lastSpeechEndTime = Date.now();
         URL.revokeObjectURL(audioUrl);
         if (onEnd) onEnd();
       };
 
-      this.audioPlayer.onerror = () => {
+      this.audioPlayer.onerror = (e) => {
+        if (currentSessionId !== this.activeSessionId) return;
         this.isPlayingAudio = false;
         URL.revokeObjectURL(audioUrl);
-        // Fall back to browser SpeechSynthesis
-        this.fallbackBrowserSpeech(cleanText, playbackRate, onEnd);
+        console.warn('Audio element error during playback, falling back to browser speech:', e);
+        this.fallbackBrowserSpeech(cleanText, playbackRate, selectedVoice, onEnd);
       };
 
       await this.audioPlayer.play();
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err.name === 'AbortError' || currentSessionId !== this.activeSessionId) return;
       console.warn('Edge-TTS playback failed, falling back to browser SpeechSynthesis:', err.message);
-      this.fallbackBrowserSpeech(cleanText, playbackRate, onEnd);
+      this.fallbackBrowserSpeech(cleanText, playbackRate, selectedVoice, onEnd);
     }
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // Resilient Browser SpeechSynthesis Fallback with Sentence Chunking & Heartbeat
+  // Resilient Browser SpeechSynthesis Fallback with Strict Gender-Matching & Safe Cancel
   // ─────────────────────────────────────────────────────────────────
-  fallbackBrowserSpeech(text, rate = 1.0, onEnd) {
+  fallbackBrowserSpeech(text, rate = 1.0, voice = null, onEnd = null) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       if (onEnd) onEnd();
       return;
     }
 
-    // Ensure microphone is stopped before fallback speech begins
+    // Set new session ID
+    this.activeSessionId = ++this.playbackSessionId;
+    const currentSessionId = this.activeSessionId;
+
     this.stopListening();
     this.isPlayingAudio = true;
+    this.isSpeechSynthesisActive = true;
+    this.lastSpokenText = text;
     this.callbacks.onStateChange('speaking');
 
     try {
       window.speechSynthesis.cancel();
+
       // Chunk long text into short sentences to prevent Chrome's 15s freeze bug
       const sentences = text.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [text];
       let currentIndex = 0;
 
-      // Chrome SpeechSynthesis keepalive heartbeat
+      const requestedVoice = voice || this.settings.selectedVoice || 'friday-core-female';
+      const isMale = /male|guy|david|mark/i.test(requestedVoice);
+
+      // Keepalive heartbeat for Chromium speech synthesis bug
       const keepAlive = setInterval(() => {
-        if (window.speechSynthesis.speaking) {
+        if (window.speechSynthesis.speaking && this.isSpeechSynthesisActive) {
           window.speechSynthesis.pause();
           window.speechSynthesis.resume();
         } else {
           clearInterval(keepAlive);
         }
-      }, 10000);
+      }, 8000);
 
       const speakNext = () => {
-        if (currentIndex >= sentences.length) {
+        if (!this.isSpeechSynthesisActive || currentSessionId !== this.activeSessionId) {
           clearInterval(keepAlive);
           this.isPlayingAudio = false;
-          if (onEnd) onEnd();
+          return;
+        }
+
+        if (currentIndex >= sentences.length) {
+          clearInterval(keepAlive);
+          this.isSpeechSynthesisActive = false;
+          this.isPlayingAudio = false;
+          this.lastSpeechEndTime = Date.now();
+          if (onEnd && currentSessionId === this.activeSessionId) {
+            onEnd();
+          }
           return;
         }
 
@@ -463,19 +524,42 @@ class VoiceEngine {
         const utter = new SpeechSynthesisUtterance(part);
         utter.rate = rate;
 
-        // Select best available neural/English voice
         const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find((v) =>
-          v.name.includes('Google UK English Female') ||
-          v.name.includes('Natural') ||
-          v.name.includes('Aria') ||
-          v.name.includes('Samantha') ||
-          (v.lang.startsWith('en') && !v.name.includes('Robotic'))
-        );
-        if (preferred) utter.voice = preferred;
+        let matchedVoice = null;
 
-        utter.onend = () => speakNext();
-        utter.onerror = () => speakNext();
+        if (isMale) {
+          // Look for matching Male voices
+          matchedVoice = voices.find((v) =>
+            v.lang.startsWith('en') &&
+            (/david|mark|guy|george|male/i.test(v.name) || (!/female|zira|samantha|aria|jenny|hazel/i.test(v.name)))
+          );
+        } else {
+          // Look for matching Female voices
+          matchedVoice = voices.find((v) =>
+            v.lang.startsWith('en') &&
+            (/female|zira|samantha|aria|jenny|hazel|sonia|swara/i.test(v.name) || /natural/i.test(v.name))
+          );
+        }
+
+        if (matchedVoice) {
+          utter.voice = matchedVoice;
+        }
+
+        utter.onend = () => {
+          if (!this.isSpeechSynthesisActive || currentSessionId !== this.activeSessionId) return;
+          speakNext();
+        };
+
+        utter.onerror = (e) => {
+          // CRITICAL: Stop chain on interruption or cancelation!
+          if (e.error === 'interrupted' || e.error === 'canceled' || !this.isSpeechSynthesisActive || currentSessionId !== this.activeSessionId) {
+            clearInterval(keepAlive);
+            this.isPlayingAudio = false;
+            this.isSpeechSynthesisActive = false;
+            return;
+          }
+          speakNext();
+        };
 
         window.speechSynthesis.speak(utter);
       };
@@ -484,7 +568,8 @@ class VoiceEngine {
     } catch (e) {
       console.warn('Browser SpeechSynthesis error:', e);
       this.isPlayingAudio = false;
-      if (onEnd) onEnd();
+      this.isSpeechSynthesisActive = false;
+      if (onEnd && currentSessionId === this.activeSessionId) onEnd();
     }
   }
 

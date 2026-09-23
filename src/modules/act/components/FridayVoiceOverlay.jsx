@@ -144,7 +144,7 @@ export function FridayVoiceOverlay({
       setIsExecutingAction(false);
       const failMsg = `Action failed: ${err.message || 'Cluster API error'}.`;
       setActiveSpeechText(failMsg);
-      voiceEngine.fallbackBrowserSpeech(failMsg);
+      voiceEngine.fallbackBrowserSpeech(failMsg, 1.0, settings.selectedVoice);
     }
   }, [onActionExecuted, settings.selectedVoice, settings.speechRate, settings.handsFree]);
 
@@ -159,6 +159,30 @@ export function FridayVoiceOverlay({
 
     // Guard: Prevent duplicate dispatches from concurrent VAD and UI click events
     if (isProcessingRef.current) return;
+
+    // 1. Guard against trailing assistant speech acoustic echo
+    if (voiceEngine.isPlayingAudio || (typeof window !== 'undefined' && window.speechSynthesis?.speaking)) {
+      console.debug('Acoustic guard: dropping utterance during active speech');
+      return;
+    }
+    const timeSinceSpeech = Date.now() - (voiceEngine.lastSpeechEndTime || 0);
+    if (timeSinceSpeech < 900) {
+      console.debug('Acoustic guard: dropping room acoustic tail utterance');
+      return;
+    }
+
+    // 2. Guard against speech recognition picking up the assistant's own output (self-echo)
+    const lastSpoken = (voiceEngine.lastSpokenText || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    const normalizedUser = userText.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (lastSpoken && normalizedUser.length >= 6) {
+      if (lastSpoken.includes(normalizedUser) || normalizedUser.includes(lastSpoken.slice(0, 30))) {
+        console.warn('Echo filter: dropped microphone loopback of assistant speech:', userText);
+        setMicState('idle');
+        setInterimText('');
+        return;
+      }
+    }
+
     isProcessingRef.current = true;
 
     // Check for verbal action confirmation ("confirm", "yes", "do it", "execute")
@@ -209,13 +233,13 @@ export function FridayVoiceOverlay({
           setMicState('idle');
           setActiveSpeechText('');
           soundFX.playSuccessChime();
-          // Wait 700ms for completion chime to finish and room acoustic tail to clear
+          // Wait 900ms for completion chime to finish and room acoustic tail to clear
           if (settings.handsFree !== false && startListeningSessionRef.current) {
             setTimeout(() => {
-              if (!isProcessingRef.current) {
+              if (!isProcessingRef.current && !voiceEngine.isPlayingAudio) {
                 startListeningSessionRef.current();
               }
-            }, 700);
+            }, 900);
           }
         },
       });
@@ -224,14 +248,14 @@ export function FridayVoiceOverlay({
       setMicState('idle');
       const errReply = `I ran into an issue reaching the neural core: ${err.message || 'Network error'}.`;
       setActiveSpeechText(errReply);
-      voiceEngine.fallbackBrowserSpeech(errReply, 1.0, () => {
+      voiceEngine.fallbackBrowserSpeech(errReply, 1.0, settings.selectedVoice, () => {
         setActiveSpeechText('');
         if (settings.handsFree !== false && startListeningSessionRef.current) {
           setTimeout(() => {
-            if (!isProcessingRef.current) {
+            if (!isProcessingRef.current && !voiceEngine.isPlayingAudio) {
               startListeningSessionRef.current();
             }
-          }, 700);
+          }, 900);
         }
       });
     } finally {
@@ -244,6 +268,14 @@ export function FridayVoiceOverlay({
   // Mic Control & State Management
   // ─────────────────────────────────────────────────────────────────
   const startListeningSession = useCallback(() => {
+    // Safety check: ensure assistant is not currently speaking before opening mic
+    if (voiceEngine.isPlayingAudio || (typeof window !== 'undefined' && window.speechSynthesis?.speaking)) {
+      console.debug('Delaying startListeningSession: assistant is still speaking');
+      setTimeout(() => {
+        if (startListeningSessionRef.current) startListeningSessionRef.current();
+      }, 500);
+      return;
+    }
     soundFX.playMicStart();
     setInterimText('Listening to you...');
     voiceEngine.startListening({

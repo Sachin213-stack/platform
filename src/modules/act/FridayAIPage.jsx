@@ -190,13 +190,13 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         setMicState('idle');
         setActiveSpeakingText('');
         setIsSimulating(false);
-        // Wait 700ms for completion chime to finish and room acoustic tail to dissipate
+        // Wait 900ms for completion chime to finish and room acoustic tail to dissipate
         if (settings.handsFree !== false && onMicPressRef.current) {
           setTimeout(() => {
-            if (!isProcessingRef.current) {
+            if (!isProcessingRef.current && !voiceEngine.isPlayingAudio) {
               onMicPressRef.current();
             }
-          }, 700);
+          }, 900);
         }
       },
     });
@@ -224,6 +224,30 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
 
     // Guard: Prevent duplicate dispatches for the same voice turn
     if (isProcessingRef.current) return;
+
+    // Guard against trailing assistant speech acoustic echo
+    if (voiceEngine.isPlayingAudio || (typeof window !== 'undefined' && window.speechSynthesis?.speaking)) {
+      console.debug('Acoustic guard: dropping utterance during active speech');
+      return;
+    }
+    const timeSinceSpeech = Date.now() - (voiceEngine.lastSpeechEndTime || 0);
+    if (timeSinceSpeech < 900) {
+      console.debug('Acoustic guard: dropping room acoustic tail utterance');
+      return;
+    }
+
+    // Guard against speech recognition picking up the assistant's own output (self-echo)
+    const lastSpoken = (voiceEngine.lastSpokenText || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    const userNormalized = userText.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (lastSpoken && userNormalized.length >= 6) {
+      if (lastSpoken.includes(userNormalized) || userNormalized.includes(lastSpoken.slice(0, 30))) {
+        console.warn('Echo filter: dropped microphone loopback of assistant speech:', userText);
+        setMicState('idle');
+        setActiveTranscription('');
+        return;
+      }
+    }
+
     isProcessingRef.current = true;
 
     soundFX.playMicStop();
@@ -273,6 +297,14 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
    * onMicPress: Triggered when user begins real voice capture
    */
   const onMicPress = useCallback(() => {
+    if (voiceEngine.isPlayingAudio || (typeof window !== 'undefined' && window.speechSynthesis?.speaking)) {
+      console.debug('Delaying onMicPress: assistant is still speaking');
+      setTimeout(() => {
+        if (onMicPressRef.current) onMicPressRef.current();
+      }, 500);
+      return;
+    }
+
     clearAllTimers();
     setIsSimulating(false);
     setActiveSpeakingText('');
