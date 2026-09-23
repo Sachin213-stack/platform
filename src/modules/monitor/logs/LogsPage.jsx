@@ -8,7 +8,7 @@ import { LogDetailDrawer } from './components/LogDetailDrawer';
 import { LogShippingModal } from './components/LogShippingModal';
 
 import { useTenant } from '../../../shared/context/TenantContext';
-import { logsApi } from '../../../shared/services/apiClient';
+import { logsApi, apiKeysApi } from '../../../shared/services/apiClient';
 
 const MAX_DOM_LINES = 800;
 
@@ -21,6 +21,10 @@ export default function LogsPage({ onNavigate, initialContext }) {
   const [isLive, setIsLive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isReconnecting, setIsReconnecting] = useState(false);
+
+  // ── Credentials & Test Probe State ──────────────────────────────
+  const [dashboardApiKey, setDashboardApiKey] = useState('');
+  const [isSendingTestLog, setIsSendingTestLog] = useState(false);
 
   // ── Detail Drawer & Modal State ─────────────────────────────────
   const [selectedLog, setSelectedLog] = useState(null);
@@ -40,6 +44,30 @@ export default function LogsPage({ onNavigate, initialContext }) {
 
   const eventSourceRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+
+  // 0. Fetch API key for snippet generator
+  useEffect(() => {
+    let isMounted = true;
+    async function loadKey() {
+      if (!selectedBusiness?.id) return;
+      const cached = localStorage.getItem(`aicto_api_key_${selectedBusiness.id}`);
+      if (cached) {
+        if (isMounted) setDashboardApiKey(cached);
+        return;
+      }
+      try {
+        const keys = await apiKeysApi.getKeys();
+        if (keys && keys.length > 0 && keys[0].api_key && isMounted) {
+          setDashboardApiKey(keys[0].api_key);
+          localStorage.setItem(`aicto_api_key_${selectedBusiness.id}`, keys[0].api_key);
+        }
+      } catch (err) {
+        console.debug('Could not load api keys for logs page:', err);
+      }
+    }
+    loadKey();
+    return () => { isMounted = false; };
+  }, [selectedBusiness?.id]);
 
   // 1. Fetch available sources on mount
   useEffect(() => {
@@ -227,6 +255,38 @@ export default function LogsPage({ onNavigate, initialContext }) {
     setIsLive(true);
   };
 
+  // Send test verification log probe
+  const handleSendTestLog = async () => {
+    setIsSendingTestLog(true);
+    try {
+      const nowIso = new Date().toISOString();
+      await logsApi.ingestLogs([
+        {
+          timestamp: nowIso,
+          level: 'info',
+          source: 'dashboard-probe',
+          log_type: 'application',
+          format: 'json',
+          content: `[VERIFICATION PROBE] Live telemetry stream verified at ${new Date().toLocaleTimeString()} from Dashboard.`,
+          parsed_fields: {
+            probe: 'manual_verification',
+            status: 'operational',
+            business_id: selectedBusiness?.id || 'default',
+            agent: 'aicto-observability-engine',
+          },
+        },
+      ]);
+      // If paused, fetch logs immediately
+      if (!isLive) {
+        fetchQueryLogs();
+      }
+    } catch (err) {
+      console.error('Failed to send test log probe:', err);
+    } finally {
+      setIsSendingTestLog(false);
+    }
+  };
+
   // Ask FRIDAY about this log entry
   const handleAskFriday = (log) => {
     if (onNavigate) {
@@ -279,6 +339,10 @@ export default function LogsPage({ onNavigate, initialContext }) {
         selectedLog={selectedLog}
         onSelectLog={setSelectedLog}
         onOpenShippingModal={() => setIsShippingModalOpen(true)}
+        onSendTestLog={handleSendTestLog}
+        isSendingTestLog={isSendingTestLog}
+        apiKey={dashboardApiKey}
+        businessId={selectedBusiness?.id}
       />
 
       {/* Expand-on-Click Detail Drawer */}
@@ -296,6 +360,8 @@ export default function LogsPage({ onNavigate, initialContext }) {
         isOpen={isShippingModalOpen}
         onClose={() => setIsShippingModalOpen(false)}
         onNavigateToSettings={() => onNavigate && onNavigate('settings')}
+        apiKey={dashboardApiKey}
+        businessId={selectedBusiness?.id}
       />
     </div>
   );

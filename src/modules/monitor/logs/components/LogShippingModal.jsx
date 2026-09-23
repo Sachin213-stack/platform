@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from '../../../../shared/components/Button';
-import { Card } from '../../../../shared/components/Card';
 
 export function LogShippingModal({
   isOpen,
   onClose,
   onNavigateToSettings,
+  apiKey = '',
+  businessId = '',
 }) {
   const [activeTab, setActiveTab] = useState('curl');
   const [copied, setCopied] = useState(false);
@@ -13,24 +14,26 @@ export function LogShippingModal({
   if (!isOpen) return null;
 
   const endpointUrl = `${window.location.origin}/api/logs`;
+  const currentKey = apiKey || 'YOUR_API_KEY_HERE';
 
   const snippets = {
     curl: `curl -X POST "${endpointUrl}" \\
   -H "Content-Type: application/json" \\
-  -H "X-API-Key: YOUR_API_KEY_HERE" \\
+  -H "X-API-Key: ${currentKey}" \\
   -d '{
     "logs": [
       {
         "timestamp": "${new Date().toISOString()}",
         "level": "error",
-        "source": "checkout-service",
+        "source": "backend-service",
         "log_type": "application",
         "format": "json",
-        "content": "[CHECKOUT] ERROR: Database connection timeout after 5000ms",
+        "content": "[BACKEND] ERROR: Database connection timeout after 5000ms",
         "parsed_fields": {
           "status_code": 504,
-          "service": "checkout-service",
-          "error": "TimeoutError"
+          "service": "backend-service",
+          "error": "TimeoutError",
+          "business_id": "${businessId || 'your-business-id'}"
         }
       }
     ]
@@ -41,7 +44,7 @@ import requests
 from datetime import datetime, timezone
 
 AI_CTO_LOGS_URL = "${endpointUrl}"
-AI_CTO_API_KEY = "YOUR_API_KEY_HERE"
+AI_CTO_API_KEY = "${currentKey}"
 
 def ship_log_entry(level: str, message: str, source: str = "backend-app", parsed: dict = None):
     payload = {
@@ -83,7 +86,7 @@ ship_log_entry("error", "Payment processing failed: insufficient funds", source=
     Host         ${window.location.hostname}
     Port         ${window.location.port || '8000'}
     URI          /api/logs
-    Header       X-API-Key YOUR_API_KEY_HERE
+    Header       X-API-Key ${currentKey}
     Format       json`,
   };
 

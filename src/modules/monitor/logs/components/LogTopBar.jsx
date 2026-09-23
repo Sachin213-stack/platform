@@ -1,5 +1,4 @@
 import React from 'react';
-import { Badge } from '../../../../shared/components/Badge';
 import { Button } from '../../../../shared/components/Button';
 
 export function LogTopBar({

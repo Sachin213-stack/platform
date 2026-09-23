@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Badge } from '../../../../shared/components/Badge';
-import { EmptyState } from '../../../../shared/components/EmptyState';
+import { Button } from '../../../../shared/components/Button';
+import { generateTrackingSnippet } from '../../../onboarding/onboardingConfig';
 
 function formatTimestamp(ts) {
   if (!ts) return '';
@@ -45,10 +45,26 @@ export function LogStreamPanel({
   selectedLog,
   onSelectLog,
   onOpenShippingModal,
+  onSendTestLog,
+  isSendingTestLog = false,
+  apiKey = '',
+  businessId = '',
 }) {
   const containerRef = useRef(null);
   const [isAutoScrollPaused, setIsAutoScrollPaused] = useState(false);
   const userScrolledUpRef = useRef(false);
+
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const snippetCode = generateTrackingSnippet(
+    businessId || 'YOUR_BUSINESS_ID',
+    apiKey || 'YOUR_API_KEY'
+  );
+
+  const handleCopySnippet = () => {
+    navigator.clipboard.writeText(snippetCode);
+    setCopiedSnippet(true);
+    setTimeout(() => setCopiedSnippet(false), 2000);
+  };
 
   // Auto-scroll handler
   const scrollToBottom = useCallback((behavior = 'smooth') => {
@@ -127,20 +143,104 @@ export function LogStreamPanel({
           </div>
         ) : logs.length === 0 ? (
           <div className="log-terminal-empty">
-            <EmptyState
-              icon={
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <line x1="8" y1="21" x2="16" y2="21" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
-                  <polyline points="6 9 10 13 14 9" />
-                </svg>
-              }
-              title="No Logs Ingested Yet"
-              description="Logs will appear here in real-time once your server log shipper (Fluentd, Vector, Filebeat, or curl script) is connected."
-              actionLabel="View Log Shipper Setup"
-              onAction={onOpenShippingModal}
-            />
+            <div className="log-awaiting-container">
+              <div className="log-awaiting-header">
+                <div className="log-awaiting-beacon">
+                  <span className="log-awaiting-pulse" />
+                  <span className="log-awaiting-dot" />
+                </div>
+                <div className="log-awaiting-badge">
+                  <span className="log-awaiting-badge-dot" />
+                  <span>ZERO-MOCK TELEMETRY ENGINE ACTIVE</span>
+                </div>
+                <h3 className="log-awaiting-title">Awaiting Live Telemetry & Server Logs</h3>
+                <p className="log-awaiting-desc">
+                  AI-CTO is connected and monitoring. Zero synthetic baseline data is loaded—this terminal renders strictly authentic logs from your connected web apps and backend services.
+                </p>
+
+                <div className="log-awaiting-actions">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={isSendingTestLog}
+                    onClick={onSendTestLog}
+                    icon={
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                      </svg>
+                    }
+                  >
+                    Send Instant Test Log Probe
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={onOpenShippingModal}
+                    icon={
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2v8M4.93 10.93l1.41 1.41M2 18h8M20 18h2M19.07 10.93l-1.41 1.41M22 22H2M8 22v-4a4 4 0 0 1 8 0v4" />
+                      </svg>
+                    }
+                  >
+                    Server Shipper Setup
+                  </Button>
+                </div>
+              </div>
+
+              <div className="log-awaiting-cards">
+                {/* Option 1: Browser Telemetry & Error Mirroring */}
+                <div className="log-awaiting-card">
+                  <div className="log-awaiting-card__header">
+                    <span className="log-awaiting-card__icon">🌐</span>
+                    <div>
+                      <h4 className="log-awaiting-card__title">Website Frontend Telemetry</h4>
+                      <span className="log-awaiting-card__sub">Core Web Vitals, runtime JS errors & promise rejections</span>
+                    </div>
+                  </div>
+                  <p className="log-awaiting-card__text">
+                    Add this lightweight script tag to your web app's HTML <code>&lt;head&gt;</code>. Uncaught errors and client crashes automatically stream into this terminal.
+                  </p>
+                  <div className="log-awaiting-code-wrap">
+                    <code className="log-awaiting-code">{snippetCode}</code>
+                    <button
+                      type="button"
+                      className="log-awaiting-copy-btn"
+                      onClick={handleCopySnippet}
+                      title="Copy script snippet to clipboard"
+                    >
+                      {copiedSnippet ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Option 2: Server-Side Logs */}
+                <div className="log-awaiting-card">
+                  <div className="log-awaiting-card__header">
+                    <span className="log-awaiting-card__icon">🖥️</span>
+                    <div>
+                      <h4 className="log-awaiting-card__title">Server Log Shipper</h4>
+                      <span className="log-awaiting-card__sub">Docker, Kubernetes, FluentBit, Python, Node, Go</span>
+                    </div>
+                  </div>
+                  <p className="log-awaiting-card__text">
+                    Ship backend application logs, stack traces, and HTTP 5xx errors directly to our high-throughput ingestion endpoint via HTTP POST.
+                  </p>
+                  <div className="log-awaiting-code-wrap">
+                    <code className="log-awaiting-code">
+                      POST {window.location.origin}/api/logs
+                    </code>
+                    <button
+                      type="button"
+                      className="log-awaiting-copy-btn"
+                      onClick={onOpenShippingModal}
+                    >
+                      View Snippets →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="log-lines-list">
