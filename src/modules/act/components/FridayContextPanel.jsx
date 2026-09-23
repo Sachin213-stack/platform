@@ -12,7 +12,7 @@ export function FridayContextPanel({
 }) {
   const [activeTab, setActiveTab] = useState('context'); // 'context' | 'history'
   const [searchQuery, setSearchQuery] = useState('');
-  const { sensitivity, liveCrashRisk, liveHeadroom, activeAnomaliesCount, anomalies } = useAnalytics();
+  const { sensitivity, liveCrashRisk, liveHeadroom, activeAnomaliesCount, anomalies, hasLiveData } = useAnalytics();
 
   const filteredHistory = commandHistory.filter((item) =>
     item.command.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -22,13 +22,15 @@ export function FridayContextPanel({
   const contextService =
     initialContext?.context?.anomaly?.service ||
     initialContext?.context?.service ||
-    (activeAnomaliesCount > 0 ? anomalies[0]?.service : 'checkout-v2');
+    (activeAnomaliesCount > 0 ? anomalies[0]?.service : (hasLiveData ? 'All Microservices' : 'No Service Connected'));
 
   const contextIncident =
     initialContext?.initialPrompt ||
     (activeAnomaliesCount > 0
       ? `Active Incident: ${anomalies[0]?.title} (${anomalies[0]?.deviation})`
-      : 'All microservice health probes and latency bounds are nominal.');
+      : (hasLiveData
+          ? 'All microservice health probes and latency bounds are nominal.'
+          : 'No live telemetry stream is currently connected.'));
 
   return (
     <div className="friday-context-panel">
@@ -88,13 +90,15 @@ export function FridayContextPanel({
           <div className="friday-metrics-grid">
             <div className="friday-metric-box">
               <span className="friday-metric-box__label">Crash Risk</span>
-              <span className="friday-metric-box__val" style={{ color: liveCrashRisk < 15 ? 'var(--color-status-success)' : 'var(--color-status-warning)' }}>
-                {liveCrashRisk}%
+              <span className="friday-metric-box__val" style={{ color: hasLiveData ? (liveCrashRisk < 15 ? 'var(--color-status-success)' : 'var(--color-status-warning)') : 'var(--color-text-tertiary)' }}>
+                {hasLiveData ? `${liveCrashRisk}%` : 'N/A'}
               </span>
             </div>
             <div className="friday-metric-box">
               <span className="friday-metric-box__label">Headroom</span>
-              <span className="friday-metric-box__val">{liveHeadroom}%</span>
+              <span className="friday-metric-box__val" style={{ color: hasLiveData ? 'inherit' : 'var(--color-text-tertiary)' }}>
+                {hasLiveData ? `${liveHeadroom}%` : 'N/A'}
+              </span>
             </div>
             <div className="friday-metric-box">
               <span className="friday-metric-box__label">Sensitivity</span>

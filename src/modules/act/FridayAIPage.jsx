@@ -30,6 +30,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     anomalies,
     activeAnomaliesCount,
     liveCrashRisk,
+    hasLiveData,
     processNLQuery,
   } = useAnalytics();
 
@@ -51,8 +52,10 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         text:
           activeAnomaliesCount > 0
-            ? `Good evening. I am monitoring all microservice telemetry via Kimi (Moonshot AI). Telemetry watch alert: ${activeAnomaliesCount} active anomaly detected (${anomalies[0]?.title || 'Checkout Latency Spike'}). Crash risk is currently ${liveCrashRisk}%. How can I assist you with infrastructure operations?`
-            : 'Good evening. I am monitoring all microservice telemetry, edge TLS handshakes, and autonomous incident mitigations via Kimi (Moonshot AI). Zero active anomalies detected. How can I assist you with infrastructure operations?',
+            ? `Good day. I am FRIDAY, your AI-CTO partner. Telemetry alert: ${activeAnomaliesCount} active anomaly detected (${anomalies[0]?.title || 'Service Degradation'}). How can I assist you?`
+            : hasLiveData
+              ? 'Good day. I am FRIDAY, your AI-CTO partner. All connected telemetry streams are nominal with zero active anomalies. How can I assist you today?'
+              : 'Good day! I am FRIDAY, your AI-CTO and engineering partner. How can I assist you with your projects, system architecture, code, or engineering tasks today?',
       },
     ];
     fridayMemory.setMessages(welcome);
@@ -163,7 +166,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         id: `m-welcome-${Date.now()}`,
         sender: 'friday',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: 'Started a new session. All live cluster telemetry is nominal. How can I assist you?',
+        text: 'Started a new session. I am FRIDAY, your AI-CTO and engineering partner. How can I assist you?',
       },
     ];
     fridayMemory.setMessages(welcome);
@@ -271,13 +274,16 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         mode: 'voice',
         model: settings.selectedModel || activeModel,
         reasoning_effort: settings.reasoningEffort || 'medium',
-        context_hints: {
-          anomalies: anomalies.slice(0, 3),
+        context_hints: hasLiveData ? {
+          has_live_telemetry: true,
+          anomalies: (anomalies || []).slice(0, 3),
           liveCrashRisk,
           activeAnomaliesCount,
+        } : {
+          has_live_telemetry: false,
         },
       });
-      const aiReply = res.response || res.content || (res.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'Systems nominal. No anomalous patterns detected.');
+      const aiReply = res.response || res.content || (res.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'I am here and ready to help. How can I assist you further?');
       if (res.model_used) setActiveModel(res.model_used);
       onAssistantResponse(aiReply, res.suggested_actions);
       addCommandHistoryItem(userText, aiReply);
@@ -291,7 +297,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     } finally {
       isProcessingRef.current = false;
     }
-  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, settings.reasoningEffort, activeModel, processNLQuery, anomalies, liveCrashRisk, activeAnomaliesCount]);
+  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, settings.reasoningEffort, activeModel, processNLQuery, hasLiveData, anomalies, liveCrashRisk, activeAnomaliesCount]);
 
   /**
    * onMicPress: Triggered when user begins real voice capture
@@ -471,9 +477,17 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         mode: 'chat',
         model: settings.selectedModel || activeModel,
         reasoning_effort: settings.reasoningEffort || 'medium',
+        context_hints: hasLiveData ? {
+          has_live_telemetry: true,
+          anomalies: (anomalies || []).slice(0, 3),
+          liveCrashRisk,
+          activeAnomaliesCount,
+        } : {
+          has_live_telemetry: false,
+        },
       });
       setIsSending(false);
-      const aiReply = response.response || response.content || (response.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'Systems nominal. No anomalous patterns detected.');
+      const aiReply = response.response || response.content || (response.suggested_actions?.length ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'I am here and ready to help. What would you like to work on?');
       if (response.model_used) setActiveModel(response.model_used);
       addMessage('friday', aiReply, response.suggested_actions);
       addCommandHistoryItem(prompt, aiReply);
@@ -863,10 +877,10 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
                 <div className="friday-quick-commands-bar">
                   <span className="friday-quick-commands-label">Directives:</span>
                   {[
-                    'Check cluster latency and health',
-                    "Show today's active anomalies",
-                    'What is current crash risk?',
-                    'Propose capacity scale-out for checkout-v2',
+                    'How can we optimize our database architecture?',
+                    'Review cloud deployment best practices',
+                    'Check live system vitals & latency',
+                    'Help me design a microservice API',
                   ].map((cmd) => (
                     <button
                       key={cmd}
@@ -885,7 +899,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
               <div className="friday-chat-input-row">
                 <input
                   type="text"
-                  placeholder="Ask FRIDAY AI about cluster health, query anomalies, or trigger mitigations..."
+                  placeholder="Ask FRIDAY AI anything about architecture, code, deployment, or system health..."
                   value={inputVal}
                   onChange={(e) => setInputVal(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}

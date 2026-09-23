@@ -69,8 +69,9 @@ export function FridayVoiceOverlay({
       screen_vision_enabled: screenVisionActive,
     };
 
-    if (analyticsContext) {
+    if (analyticsContext && analyticsContext.hasLiveData) {
       ctx.vitals = {
+        has_live_telemetry: true,
         crash_risk_pct: analyticsContext.liveCrashRisk,
         headroom_pct: analyticsContext.liveHeadroom,
         active_anomalies_count: analyticsContext.activeAnomaliesCount,
@@ -80,6 +81,11 @@ export function FridayVoiceOverlay({
           severity: a.severity,
           deviation: a.deviation,
         })),
+      };
+    } else {
+      ctx.vitals = {
+        has_live_telemetry: false,
+        message: 'No live telemetry is currently connected.',
       };
     }
 
@@ -212,7 +218,7 @@ export function FridayVoiceOverlay({
       });
 
       const proposedActions = res.suggested_actions || [];
-      const reply = res.response || res.content || (proposedActions.length > 0 ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'All systems nominal.');
+      const reply = res.response || res.content || (proposedActions.length > 0 ? 'Mitigation action proposed. Ready to execute on your confirmation.' : 'I heard your request. How can I assist you further?');
 
       if (proposedActions.length > 0) {
         setStagedAction(proposedActions[0]);
