@@ -22,7 +22,8 @@ class VoiceEngine {
     this.audioCtx = null;
     this.micStream = null;
     this.micSource = null;
-    this.analyser = null;
+    this.micAnalyser = null;
+    this.ttsAnalyser = null;
     this.dataArray = null;
 
     // TTS Audio Player
@@ -70,19 +71,32 @@ class VoiceEngine {
       this.audioCtx.resume().catch(() => {});
     }
 
-    if (this.audioCtx && !this.analyser) {
-      this.analyser = this.audioCtx.createAnalyser();
-      this.analyser.fftSize = 64; // 32 frequency bins
-      this.analyser.smoothingTimeConstant = 0.8;
-      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    if (this.audioCtx) {
+      if (!this.micAnalyser) {
+        this.micAnalyser = this.audioCtx.createAnalyser();
+        this.micAnalyser.fftSize = 64; // 32 frequency bins
+        this.micAnalyser.smoothingTimeConstant = 0.8;
+      }
+      if (!this.ttsAnalyser) {
+        this.ttsAnalyser = this.audioCtx.createAnalyser();
+        this.ttsAnalyser.fftSize = 64;
+        this.ttsAnalyser.smoothingTimeConstant = 0.8;
+      }
+      if (!this.dataArray) {
+        this.dataArray = new Uint8Array(32);
+      }
     }
   }
 
   getFrequencyData() {
-    if (!this.analyser || !this.dataArray) {
+    const targetAnalyser = this.isPlayingAudio
+      ? this.ttsAnalyser
+      : (this.isListening ? this.micAnalyser : null);
+
+    if (!targetAnalyser || !this.dataArray) {
       return { amplitude: 0, frequencies: new Uint8Array(32) };
     }
-    this.analyser.getByteFrequencyData(this.dataArray);
+    targetAnalyser.getByteFrequencyData(this.dataArray);
 
     let sum = 0;
     for (let i = 0; i < this.dataArray.length; i++) {
@@ -105,22 +119,35 @@ class VoiceEngine {
   }
 
   async startListening(callbacks = {}) {
+    // If assistant is currently speaking, interrupt it before listening
+    if (this.isPlayingAudio) {
+      this.interrupt();
+    }
+
     this.callbacks = { ...this.callbacks, ...callbacks };
     this.initAudioContext();
 
-    // Interrupt any active assistant speech immediately
-    this.interrupt();
+    // Cleanly tear down any prior listening session
+    this.stopListening();
 
-    // Setup microphone stream for the visualizer
+    // Setup microphone stream for visualization strictly with echo cancellation & noise suppression
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        if (this.audioCtx && this.analyser) {
+        this.micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        if (this.audioCtx && this.micAnalyser) {
           if (this.micSource) {
             try { this.micSource.disconnect(); } catch {}
           }
           this.micSource = this.audioCtx.createMediaStreamSource(this.micStream);
-          this.micSource.connect(this.analyser);
+          // CRITICAL: Connect micSource ONLY to micAnalyser for FFT visualization.
+          // NEVER connect micAnalyser or micSource to audioCtx.destination!
+          this.micSource.connect(this.micAnalyser);
         }
       }
     } catch (e) {
@@ -139,10 +166,6 @@ class VoiceEngine {
       return;
     }
 
-    if (this.recognition) {
-      try { this.recognition.abort(); } catch {}
-    }
-
     this.recognition = new SpeechRec();
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
@@ -154,6 +177,9 @@ class VoiceEngine {
     this.callbacks.onStateChange('listening');
 
     this.recognition.onresult = (event) => {
+      // Guard: Ignore results if recognition was stopped or cancelled
+      if (!this.isListening) return;
+
       let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
@@ -164,14 +190,14 @@ class VoiceEngine {
         }
       }
 
-      const activeText = this.currentFinalText + (interim ? ' ' + interim : '');
+      const activeText = (this.currentFinalText + (interim ? ' ' + interim : '')).trim();
       this.currentInterimText = activeText;
       this.callbacks.onInterimTranscript(activeText);
 
       // Voice Activity Detection (VAD) Silence Timer
       if (this.settings.handsFree) {
         if (this.silenceTimer) clearTimeout(this.silenceTimer);
-        if (activeText.trim().length > 0) {
+        if (activeText.length > 0) {
           this.silenceTimer = setTimeout(() => {
             this.handleSilenceTimeout();
           }, this.settings.vadSensitivityMs || this.silenceDelayMs);
@@ -180,10 +206,11 @@ class VoiceEngine {
     };
 
     this.recognition.onerror = (event) => {
+      if (!this.isListening) return;
       if (event.error === 'no-speech') return;
       if (event.error === 'aborted') return;
       console.warn('SpeechRecognition error:', event.error);
-      
+
       let formattedMsg = `Speech recognition error: ${event.error}`;
       if (event.error === 'not-allowed') {
         formattedMsg = 'PERMISSION_DENIED: Microphone access was blocked. Please check site permissions in your browser URL bar.';
@@ -196,7 +223,8 @@ class VoiceEngine {
     };
 
     this.recognition.onend = () => {
-      if (this.isListening) {
+      // Restart only if still explicitly listening and assistant is not speaking
+      if (this.isListening && !this.isPlayingAudio) {
         try {
           this.recognition.start();
         } catch {
@@ -217,6 +245,7 @@ class VoiceEngine {
     const finalUtterance = (this.currentFinalText || this.currentInterimText).trim();
     if (!finalUtterance) return;
 
+    // Immediately stop listening so trailing audio or room acoustics do not trigger new dispatches
     this.stopListening();
     this.callbacks.onFinalTranscript(finalUtterance);
   }
@@ -229,8 +258,12 @@ class VoiceEngine {
     }
     if (this.recognition) {
       try {
-        this.recognition.stop();
+        this.recognition.onresult = null;
+        this.recognition.onend = null;
+        this.recognition.onerror = null;
+        this.recognition.abort();
       } catch {}
+      this.recognition = null;
     }
     if (this.micStream) {
       try {
@@ -244,6 +277,8 @@ class VoiceEngine {
       } catch {}
       this.micSource = null;
     }
+    this.currentInterimText = '';
+    this.currentFinalText = '';
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -277,16 +312,18 @@ class VoiceEngine {
   // Neural Speech Synthesis & Streaming Playback (TTS)
   // ─────────────────────────────────────────────────────────────────
   async playNeuralSpeech(text, { voice, rate, pitch, onEnd } = {}) {
+    // 1. MUST completely shut off microphone and recognition during assistant speech
+    this.stopListening();
     this.interrupt();
     this.initAudioContext();
 
-    // Clean markdown tables, code, and symbols; support full diagnostic explanations up to 5,000 characters
+    // Clean markdown tables, code, and symbols; respect backend 1,500 character limit
     const cleanText = (text || '')
       .replace(/```[\s\S]*?```/g, ' [technical code details provided in transcript] ')
       .replace(/\|[ -:|]+\|/g, ' ')
       .replace(/\|/g, ', ')
       .replace(/[*_#`~]/g, '')
-      .slice(0, 5000)
+      .slice(0, 1500)
       .trim();
 
     if (!cleanText) {
@@ -333,12 +370,12 @@ class VoiceEngine {
 
       this.audioPlayer.src = audioUrl;
 
-      // Connect audio player to AnalyserNode so the orb pulses to Friday's voice!
-      if (this.audioCtx && this.analyser && !this.audioPlayerSource) {
+      // Connect audio player to ttsAnalyser so the orb pulses to Friday's voice
+      if (this.audioCtx && this.ttsAnalyser && !this.audioPlayerSource) {
         try {
           this.audioPlayerSource = this.audioCtx.createMediaElementSource(this.audioPlayer);
-          this.audioPlayerSource.connect(this.analyser);
-          this.analyser.connect(this.audioCtx.destination);
+          this.audioPlayerSource.connect(this.ttsAnalyser);
+          this.ttsAnalyser.connect(this.audioCtx.destination);
         } catch (_e) {
           // MediaElementAudioSourceNode may already be connected
         }
@@ -387,6 +424,8 @@ class VoiceEngine {
       return;
     }
 
+    // Ensure microphone is stopped before fallback speech begins
+    this.stopListening();
     this.isPlayingAudio = true;
     this.callbacks.onStateChange('speaking');
 
@@ -423,7 +462,7 @@ class VoiceEngine {
 
         const utter = new SpeechSynthesisUtterance(part);
         utter.rate = rate;
-        
+
         // Select best available neural/English voice
         const voices = window.speechSynthesis.getVoices();
         const preferred = voices.find((v) =>

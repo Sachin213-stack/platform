@@ -99,10 +99,12 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     soundFX.setEnabled(settings.soundEffects);
   }, [settings.soundEffects]);
 
-  // Cleanup timers on unmount
+  // Cleanup timers & voiceEngine on unmount
   useEffect(() => {
     return () => {
       simulationTimers.current.forEach((t) => clearTimeout(t));
+      voiceEngine.interrupt();
+      voiceEngine.stopListening();
     };
   }, []);
 
@@ -170,6 +172,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
 
   const [activeModel, setActiveModel] = useState('moonshotai/kimi-k3');
   const onMicPressRef = useRef(null);
+  const isProcessingRef = useRef(false);
 
   /**
    * onAssistantResponse: Triggered when assistant has response text ready
@@ -187,10 +190,13 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         setMicState('idle');
         setActiveSpeakingText('');
         setIsSimulating(false);
+        // Wait 700ms for completion chime to finish and room acoustic tail to dissipate
         if (settings.handsFree !== false && onMicPressRef.current) {
           setTimeout(() => {
-            onMicPressRef.current();
-          }, 400);
+            if (!isProcessingRef.current) {
+              onMicPressRef.current();
+            }
+          }, 700);
         }
       },
     });
@@ -202,11 +208,26 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
    */
   const onMicRelease = useCallback(async (customPrompt) => {
     voiceEngine.stopListening();
+
+    const rawUserText = customPrompt !== undefined && typeof customPrompt === 'string'
+      ? customPrompt
+      : activeTranscription.replace('Listening to your directive...', '').trim();
+
+    const userText = (rawUserText || '').trim();
+
+    // Guard: If no meaningful utterance was detected, return cleanly to idle without sending empty queries
+    if (!userText) {
+      setMicState('idle');
+      setActiveTranscription('');
+      return;
+    }
+
+    // Guard: Prevent duplicate dispatches for the same voice turn
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
     soundFX.playMicStop();
     setMicState('processing');
-
-    const userText = customPrompt || (activeTranscription.replace('Listening to your directive...', '').trim() || 'FRIDAY, check cluster health and error budgets.');
-
     setActiveTranscription('');
     addMessage('user', userText);
 
@@ -215,6 +236,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
     if (nlResult && nlResult.actionTaken === 'UPDATE_SENSITIVITY') {
       onAssistantResponse(nlResult.text);
       addCommandHistoryItem(userText, nlResult.text);
+      isProcessingRef.current = false;
       return;
     }
 
@@ -235,7 +257,6 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
       if (res.model_used) setActiveModel(res.model_used);
       onAssistantResponse(aiReply, res.suggested_actions);
       addCommandHistoryItem(userText, aiReply);
-      return;
     } catch (err) {
       console.error('Voice API call failed:', err);
       setMicState('idle');
@@ -243,8 +264,10 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         'friday',
         `⚠️ **FRIDAY Voice Error**: ${err.message || 'Upstream LLM error'}`
       );
+    } finally {
+      isProcessingRef.current = false;
     }
-  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, activeModel, processNLQuery, anomalies, liveCrashRisk, activeAnomaliesCount]);
+  }, [activeTranscription, addMessage, addCommandHistoryItem, onAssistantResponse, conversationId, settings.selectedModel, settings.reasoningEffort, activeModel, processNLQuery, anomalies, liveCrashRisk, activeAnomaliesCount]);
 
   /**
    * onMicPress: Triggered when user begins real voice capture
@@ -342,7 +365,7 @@ export default function FridayAIPage({ initialContext, onNavigate }) {
         );
       });
     }
-  }, [initialContext, conversationId, settings.selectedModel, activeModel, addMessage, addCommandHistoryItem]);
+  }, [initialContext, conversationId, settings.selectedModel, settings.reasoningEffort, activeModel, addMessage, addCommandHistoryItem]);
 
   // Replay speech for an existing message in transcript
 

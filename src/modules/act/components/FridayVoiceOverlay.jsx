@@ -30,6 +30,7 @@ export function FridayVoiceOverlay({
 
   const transcriptScrollRef = useRef(null);
   const startListeningSessionRef = useRef(null);
+  const isProcessingRef = useRef(false);
 
   // Subscribe to shared memory updates (so chat & voice remain perfectly in sync)
   useEffect(() => {
@@ -132,8 +133,10 @@ export function FridayVoiceOverlay({
           setActiveSpeechText('');
           if (settings.handsFree !== false && startListeningSessionRef.current) {
             setTimeout(() => {
-              startListeningSessionRef.current();
-            }, 400);
+              if (!isProcessingRef.current) {
+                startListeningSessionRef.current();
+              }
+            }, 700);
           }
         },
       });
@@ -154,10 +157,15 @@ export function FridayVoiceOverlay({
       return;
     }
 
+    // Guard: Prevent duplicate dispatches from concurrent VAD and UI click events
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
     // Check for verbal action confirmation ("confirm", "yes", "do it", "execute")
     const lower = userText.toLowerCase().trim();
     if (stagedAction && (lower.includes('confirm') || lower === 'yes' || lower.includes('do it') || lower.includes('execute'))) {
       executeAction(stagedAction);
+      isProcessingRef.current = false;
       return;
     }
 
@@ -201,10 +209,13 @@ export function FridayVoiceOverlay({
           setMicState('idle');
           setActiveSpeechText('');
           soundFX.playSuccessChime();
+          // Wait 700ms for completion chime to finish and room acoustic tail to clear
           if (settings.handsFree !== false && startListeningSessionRef.current) {
             setTimeout(() => {
-              startListeningSessionRef.current();
-            }, 400);
+              if (!isProcessingRef.current) {
+                startListeningSessionRef.current();
+              }
+            }, 700);
           }
         },
       });
@@ -217,10 +228,14 @@ export function FridayVoiceOverlay({
         setActiveSpeechText('');
         if (settings.handsFree !== false && startListeningSessionRef.current) {
           setTimeout(() => {
-            startListeningSessionRef.current();
-          }, 400);
+            if (!isProcessingRef.current) {
+              startListeningSessionRef.current();
+            }
+          }, 700);
         }
       });
+    } finally {
+      isProcessingRef.current = false;
     }
   }, [stagedAction, buildOmniscientContext, settings, executeAction]);
 
