@@ -2,7 +2,19 @@
  * AI-CTO Frontend API Client
  * Centralized service layer for communicating with the FastAPI Modular Monolith backend.
  */
-const RAW_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api';
+const RAW_BASE = (() => {
+  const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '';
+  if (envUrl && /^https?:\/\//i.test(envUrl)) return envUrl;
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.hostname.endsWith('.onrender.com')) {
+      return 'https://platform-backend-1ejl.onrender.com/api';
+    }
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return '/api';
+    }
+  }
+  return '/api';
+})();
 const API_BASE = RAW_BASE.replace(/\/+$/, '');
 const TOKEN_KEY = 'aicto_access_token';
 const REFRESH_KEY = 'aicto_refresh_token';
@@ -98,7 +110,7 @@ async function request(endpoint, options = {}, isRetry = false) {
   const token = getAccessToken();
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && !options.headers?.['X-API-Key'] ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
