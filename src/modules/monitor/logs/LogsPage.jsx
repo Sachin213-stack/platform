@@ -56,7 +56,7 @@ export default function LogsPage({ onNavigate, initialContext }) {
         return;
       }
       try {
-        const keys = await apiKeysApi.getKeys();
+        const keys = await apiKeysApi.getKeys(selectedBusiness?.id);
         if (keys && keys.length > 0 && keys[0].api_key && isMounted) {
           setDashboardApiKey(keys[0].api_key);
           localStorage.setItem(`aicto_api_key_${selectedBusiness.id}`, keys[0].api_key);
@@ -133,6 +133,7 @@ export default function LogsPage({ onNavigate, initialContext }) {
         search: searchQuery,
         limit: 100,
         offset: 0,
+        businessId: selectedBusiness?.id,
       });
 
       if (res?.entries) {
@@ -146,7 +147,7 @@ export default function LogsPage({ onNavigate, initialContext }) {
     } finally {
       setIsLoading(false);
     }
-  }, [anomalyContext, timePreset, logType, selectedLevels, source, searchQuery]);
+  }, [anomalyContext, timePreset, logType, selectedLevels, source, searchQuery, selectedBusiness?.id]);
 
   // Trigger query on filter change if paused
   useEffect(() => {

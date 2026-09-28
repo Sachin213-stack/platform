@@ -3,15 +3,17 @@ import { Card } from '../../shared/components/Card';
 import { Badge } from '../../shared/components/Badge';
 import { Button } from '../../shared/components/Button';
 import { dashboardApi } from '../../shared/services/apiClient';
+import { useTenant } from '../../shared/context/TenantContext';
 
 export default function AuditLogPage({ onNavigate }) {
+  const { selectedBusiness } = useTenant() || {};
   const [liveEntries, setLiveEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await dashboardApi.getAuditLogs();
+      const res = await dashboardApi.getAuditLogs(50, selectedBusiness?.id);
       if (res && res.entries && res.entries.length > 0) {
         const mapped = res.entries.map((e) => ({
           id: e.id,
@@ -33,7 +35,7 @@ export default function AuditLogPage({ onNavigate }) {
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [selectedBusiness?.id]);
 
   const auditEntries = liveEntries;
 

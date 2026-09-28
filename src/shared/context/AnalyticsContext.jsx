@@ -8,10 +8,14 @@ import {
   generateForecastData,
 } from '../../modules/monitor/analytics/analyticsData';
 import { dashboardApi, fridayApi } from '../services/apiClient';
+import { useTenant } from './TenantContext';
 
 const AnalyticsContext = createContext(null);
 
 export function AnalyticsProvider({ children }) {
+  const tenantCtx = useTenant();
+  const selectedBusiness = tenantCtx?.selectedBusiness;
+
   // ── 1. Anomaly Sensitivity (50 - 99%) ─────────────────────────
   const [sensitivity, setSensitivity] = useState(85);
 
@@ -36,7 +40,7 @@ export function AnalyticsProvider({ children }) {
   // Fetch real analytics models and capacity data from backend
   const fetchLiveAnalytics = useCallback(async () => {
     try {
-      const res = await dashboardApi.getAnalytics();
+      const res = await dashboardApi.getAnalytics(selectedBusiness?.id);
       if (!res) return;
       setHasLiveData(Boolean(res.has_live_data));
       if (res.crash_risk_pct !== undefined && res.crash_risk_pct !== null) {
@@ -81,7 +85,7 @@ export function AnalyticsProvider({ children }) {
     } catch (e) {
       console.warn('Could not fetch live analytics from backend:', e);
     }
-  }, []);
+  }, [selectedBusiness?.id]);
 
   useEffect(() => {
     fetchLiveAnalytics();

@@ -55,7 +55,7 @@ export function Step2TrackingSnippet({
           if (isMounted) setApiKey(storedKey);
           return;
         }
-        const keys = await apiKeysApi.getKeys();
+        const keys = await apiKeysApi.getKeys(businessId);
         if (keys && keys.length > 0 && keys[0].api_key) {
           if (isMounted) {
             setApiKey(keys[0].api_key);
@@ -64,7 +64,7 @@ export function Step2TrackingSnippet({
           }
           return;
         }
-        const created = await apiKeysApi.createKey('Website Telemetry Snippet Key');
+        const created = await apiKeysApi.createKey('Website Telemetry Snippet Key', businessId);
         if (created && created.api_key && isMounted) {
           setApiKey(created.api_key);
           onChange('apiKey', created.api_key);

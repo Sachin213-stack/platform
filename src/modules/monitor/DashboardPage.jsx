@@ -46,7 +46,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         return;
       }
       try {
-        const keys = await apiKeysApi.getKeys();
+        const keys = await apiKeysApi.getKeys(selectedBusiness.id);
         if (keys && keys.length > 0 && keys[0].api_key && isMounted) {
           setDashboardApiKey(keys[0].api_key);
           localStorage.setItem(`aicto_api_key_${selectedBusiness.id}`, keys[0].api_key);
@@ -396,8 +396,8 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
     if (!silent) setIsRefreshing(true);
 
     try {
-      // Call backend metrics endpoint
-      const metricsData = await dashboardApi.getMetrics();
+      // Call backend metrics endpoint scoped to currently selected tenant
+      const metricsData = await dashboardApi.getMetrics(selectedBusiness?.id);
       if (metricsData) {
         setHasLiveData(Boolean(metricsData.has_live_data));
         if (metricsData.timeseries && metricsData.timeseries.length > 0) {

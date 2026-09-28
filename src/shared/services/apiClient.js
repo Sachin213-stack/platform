@@ -321,16 +321,20 @@ export const authApi = {
 // Dashboard & Monitoring API
 // ==========================================
 export const dashboardApi = {
-  async getMetrics() {
-    return await request('/dashboard/metrics', { method: 'GET' });
+  async getMetrics(businessId = null) {
+    const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
+    return await request(`/dashboard/metrics${query}`, { method: 'GET' });
   },
 
-  async getAnalytics() {
-    return await request('/dashboard/analytics', { method: 'GET' });
+  async getAnalytics(businessId = null) {
+    const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
+    return await request(`/dashboard/analytics${query}`, { method: 'GET' });
   },
 
-  async getAuditLogs(limit = 50) {
-    return await request(`/dashboard/audit-logs?limit=${limit}`, { method: 'GET' });
+  async getAuditLogs(limit = 50, businessId = null) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (businessId) params.append('business_id', businessId);
+    return await request(`/dashboard/audit-logs?${params.toString()}`, { method: 'GET' });
   },
 };
 
@@ -502,8 +506,9 @@ export const ingestionApi = {
 // Logs & Observability API
 // ==========================================
 export const logsApi = {
-  async queryLogs({ timeFrom, timeTo, logType, level, source, search, limit = 50, offset = 0 } = {}) {
+  async queryLogs({ timeFrom, timeTo, logType, level, source, search, limit = 50, offset = 0, businessId = null } = {}) {
     const params = new URLSearchParams();
+    if (businessId) params.append('business_id', businessId);
     if (timeFrom) params.append('time_from', typeof timeFrom === 'string' ? timeFrom : timeFrom.toISOString());
     if (timeTo) params.append('time_to', typeof timeTo === 'string' ? timeTo : timeTo.toISOString());
     if (logType && logType !== 'all') params.append('log_type', logType);
@@ -559,13 +564,15 @@ export const healthApi = {
 // API Keys Management API
 // ==========================================
 export const apiKeysApi = {
-  async getKeys() {
-    return await request('/users/api-keys', { method: 'GET' });
+  async getKeys(businessId = null) {
+    const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
+    return await request(`/users/api-keys${query}`, { method: 'GET' });
   },
-  async createKey(name = 'Website Telemetry Snippet Key') {
-    return await request('/users/api-keys', {
+  async createKey(name = 'Website Telemetry Snippet Key', businessId = null) {
+    const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
+    return await request(`/users/api-keys${query}`, {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, business_id: businessId }),
     });
   },
 };
