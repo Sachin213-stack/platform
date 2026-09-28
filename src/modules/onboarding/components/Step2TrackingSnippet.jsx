@@ -7,7 +7,7 @@ import {
   generateTrackingSnippet,
   verifySnippetInstallation,
 } from '../onboardingConfig';
-import { getStoredUser, apiKeysApi } from '../../../shared/services/apiClient';
+import { getStoredUser, apiKeysApi, dashboardApi } from '../../../shared/services/apiClient';
 import { useTenant } from '../../../shared/context/TenantContext';
 
 export function Step2TrackingSnippet({
@@ -25,7 +25,7 @@ export function Step2TrackingSnippet({
   const [activeTab, setActiveTab] = useState('html'); // 'html' | 'gtm' | 'react' | 'shopify'
   const [verificationState, setVerificationState] = useState(formData.verificationStatus || 'idle'); // 'idle' | 'checking' | 'success' | 'failed'
   const [verificationResult, setVerificationResult] = useState(formData.verificationResult || null);
-  const [liveEventCount, setLiveEventCount] = useState(formData.verificationStatus === 'success' ? 4 : 0);
+  const [liveEventCount, setLiveEventCount] = useState(0);
   const eventIntervalRef = useRef(null);
 
   // Ensure Business ID exists and matches Postgres UUID format
@@ -86,17 +86,31 @@ export function Step2TrackingSnippet({
 
   const snippetCode = generateTrackingSnippet(businessId, apiKey);
 
-  // Live telemetry pulse simulation once verified
+  // Fetch authentic telemetry event count directly from PostgreSQL via backend API
   useEffect(() => {
-    if (verificationState === 'success') {
-      eventIntervalRef.current = setInterval(() => {
-        setLiveEventCount((prev) => prev + 1);
-      }, 3500);
+    let isCancelled = false;
+    async function fetchAuthenticEventCount() {
+      if (!businessId || verificationState !== 'success') return;
+      try {
+        const metrics = await dashboardApi.getMetrics(businessId);
+        if (!isCancelled && metrics) {
+          const count = metrics.total_events_count || metrics.total_events || 0;
+          setLiveEventCount(count);
+        }
+      } catch (_err) {
+        // Quiet catch for unauthenticated / background polling
+      }
     }
-    return () => {
-      if (eventIntervalRef.current) clearInterval(eventIntervalRef.current);
-    };
-  }, [verificationState]);
+
+    if (verificationState === 'success') {
+      fetchAuthenticEventCount();
+      const interval = setInterval(fetchAuthenticEventCount, 3000);
+      return () => {
+        isCancelled = true;
+        clearInterval(interval);
+      };
+    }
+  }, [verificationState, businessId]);
 
   const handleCopySnippet = () => {
     navigator.clipboard.writeText(snippetCode);
@@ -119,7 +133,15 @@ export function Step2TrackingSnippet({
         setVerificationResult(result);
         onChange('verificationStatus', 'success');
         onChange('verificationResult', result);
-        setLiveEventCount(1);
+        
+        // Immediately query real telemetry count from PostgreSQL
+        try {
+          const metrics = await dashboardApi.getMetrics(businessId);
+          const count = metrics?.total_events_count || metrics?.total_events || 1;
+          setLiveEventCount(count);
+        } catch (_) {
+          setLiveEventCount(1);
+        }
       } else {
         setVerificationState('failed');
         setVerificationResult(result);
