@@ -38,7 +38,13 @@ export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
     if (isOpen) {
       const draft = loadWizardDraft();
       if (draft && draft.formData && Object.keys(draft.formData).length > 0) {
-        setFormData(draft.formData);
+        // Source of truth is backend: do not blindly trust 'success' from saved draft
+        const safeDraftFormData = {
+          ...draft.formData,
+          verificationStatus: draft.formData.verificationStatus === 'success' ? 'idle' : (draft.formData.verificationStatus || 'idle'),
+          verificationResult: draft.formData.verificationStatus === 'success' ? null : (draft.formData.verificationResult || null),
+        };
+        setFormData(safeDraftFormData);
         setCurrentStep(draft.currentStep || 1);
         setCompletedSteps(draft.completedSteps || []);
       } else {

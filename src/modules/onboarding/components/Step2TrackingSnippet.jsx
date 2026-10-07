@@ -23,10 +23,11 @@ export function Step2TrackingSnippet({
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('html'); // 'html' | 'gtm' | 'react' | 'shopify'
-  const [verificationState, setVerificationState] = useState(formData.verificationStatus || 'idle'); // 'idle' | 'checking' | 'success' | 'failed'
+  const [verificationState, setVerificationState] = useState(
+    formData.verificationStatus === 'success' ? 'checking' : (formData.verificationStatus || 'idle')
+  );
   const [verificationResult, setVerificationResult] = useState(formData.verificationResult || null);
   const [liveEventCount, setLiveEventCount] = useState(0);
-  const eventIntervalRef = useRef(null);
 
   // Ensure Business ID exists and matches Postgres UUID format
   useEffect(() => {
@@ -86,30 +87,100 @@ export function Step2TrackingSnippet({
 
   const snippetCode = generateTrackingSnippet(businessId, apiKey);
 
-  // Fetch authentic telemetry event count directly from PostgreSQL via backend API
+  // 1. Initial Mount Check: Always consult real backend state (never assume success from localStorage draft)
   useEffect(() => {
-    let isCancelled = false;
-    async function fetchAuthenticEventCount() {
-      if (!businessId || verificationState !== 'success') return;
+    let isMounted = true;
+    async function checkInitialBackendState() {
+      if (!businessId) return;
       try {
-        const metrics = await dashboardApi.getMetrics(businessId);
-        if (!isCancelled && metrics) {
-          const count = metrics.total_events_count || metrics.total_events || 0;
-          setLiveEventCount(count);
+        const result = await verifySnippetInstallation({
+          businessId,
+          websiteUrl: formData.websiteUrl,
+          apiKey,
+        });
+        if (!isMounted) return;
+        if (result.success && result.verified) {
+          setVerificationState('success');
+          setVerificationResult(result);
+          setLiveEventCount(result.eventCount || 1);
+          onChange('verificationStatus', 'success');
+          onChange('verificationResult', result);
+        } else {
+          setVerificationState('idle');
+          setVerificationResult(null);
+          setLiveEventCount(0);
+          if (formData.verificationStatus === 'success') {
+            onChange('verificationStatus', 'idle');
+            onChange('verificationResult', null);
+          }
         }
-      } catch (_err) {
-        // Quiet catch for unauthenticated / background polling
+      } catch {
+        if (!isMounted) return;
+        setVerificationState('idle');
+        setVerificationResult(null);
+        setLiveEventCount(0);
       }
     }
 
-    if (verificationState === 'success') {
-      fetchAuthenticEventCount();
-      const interval = setInterval(fetchAuthenticEventCount, 3000);
-      return () => {
-        isCancelled = true;
-        clearInterval(interval);
-      };
+    checkInitialBackendState();
+    return () => { isMounted = false; };
+  }, [businessId, apiKey]); // run once per businessId/apiKey resolution
+
+  // 2. Auto-Detection Polling: Poll backend while unverified to detect incoming telemetry in real-time
+  useEffect(() => {
+    if (verificationState === 'success' || !businessId) return;
+    let isCancelled = false;
+
+    const pollInterval = setInterval(async () => {
+      if (isCancelled) return;
+      try {
+        const result = await verifySnippetInstallation({
+          businessId,
+          websiteUrl: formData.websiteUrl,
+          apiKey,
+        });
+        if (!isCancelled && result.success && result.verified) {
+          setVerificationState('success');
+          setVerificationResult(result);
+          setLiveEventCount(result.eventCount || 1);
+          onChange('verificationStatus', 'success');
+          onChange('verificationResult', result);
+        }
+      } catch {
+        // Silent background polling failure: never fabricate success
+      }
+    }, 5000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(pollInterval);
+    };
+  }, [verificationState, businessId, apiKey, formData.websiteUrl, onChange]);
+
+  // 3. Live Streaming Ticker: When verified, refresh real event count directly from backend
+  useEffect(() => {
+    if (verificationState !== 'success' || !businessId) return;
+    let isCancelled = false;
+
+    async function fetchAuthenticEventCount() {
+      try {
+        const metrics = await dashboardApi.getMetrics(businessId);
+        if (!isCancelled && metrics) {
+          const count = metrics.total_events_count ?? metrics.total_events ?? 0;
+          if (count > 0) {
+            setLiveEventCount(count);
+          }
+        }
+      } catch {
+        // Quiet catch for background count polling
+      }
     }
+
+    const interval = setInterval(fetchAuthenticEventCount, 4000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, [verificationState, businessId]);
 
   const handleCopySnippet = () => {
@@ -118,45 +189,45 @@ export function Step2TrackingSnippet({
     setTimeout(() => setCopied(false), 2200);
   };
 
-  const handleVerify = async (simulateFailure = false) => {
+  const handleVerify = async () => {
     setVerificationState('checking');
     try {
       const result = await verifySnippetInstallation({
         businessId,
-        websiteUrl: formData.websiteUrl || 'https://example.com',
+        websiteUrl: formData.websiteUrl,
         apiKey,
-        simulateFailure,
       });
 
-      if (result.success) {
+      if (result.success && result.verified) {
         setVerificationState('success');
         setVerificationResult(result);
+        setLiveEventCount(result.eventCount || 1);
         onChange('verificationStatus', 'success');
         onChange('verificationResult', result);
-        
-        // Immediately query real telemetry count from PostgreSQL
-        try {
-          const metrics = await dashboardApi.getMetrics(businessId);
-          const count = metrics?.total_events_count || metrics?.total_events || 1;
-          setLiveEventCount(count);
-        } catch (_) {
-          setLiveEventCount(1);
-        }
       } else {
         setVerificationState('failed');
         setVerificationResult(result);
+        setLiveEventCount(0);
         onChange('verificationStatus', 'failed');
         onChange('verificationResult', result);
       }
     } catch (err) {
+      const failureResult = {
+        success: false,
+        verified: false,
+        error: err?.message || 'Connection to verification service timed out. Telemetry beacon not detected.',
+      };
       setVerificationState('failed');
-      setVerificationResult({ error: err?.message || 'Connection to verification service timed out.' });
+      setVerificationResult(failureResult);
+      setLiveEventCount(0);
       onChange('verificationStatus', 'failed');
+      onChange('verificationResult', failureResult);
     }
   };
 
   const handleSkipInstallation = () => {
     onChange('verificationStatus', 'skipped');
+    onChange('verificationResult', null);
     onNext();
   };
 
@@ -320,18 +391,18 @@ export function Step2TrackingSnippet({
               <div className="onboarding-verify-box__info">
                 {verificationState === 'idle' && (
                   <>
-                    <h4 className="onboarding-verify-title">Verify Snippet Installation</h4>
+                    <h4 className="onboarding-verify-title">Waiting for your tracking script...</h4>
                     <p className="onboarding-verify-desc">
-                      Target domain: <strong>{formData.websiteUrl || 'https://yourwebsite.com'}</strong>. Once installed, run verification to confirm telemetry handshakes.
+                      Install the snippet on your website ({formData.websiteUrl || 'your website'}) and we'll automatically verify it.
                     </p>
                   </>
                 )}
 
                 {verificationState === 'checking' && (
                   <>
-                    <h4 className="onboarding-verify-title">Checking for tracking snippet...</h4>
+                    <h4 className="onboarding-verify-title">Checking for incoming telemetry...</h4>
                     <p className="onboarding-verify-desc">
-                      Dispatching edge probe to {formData.websiteUrl || 'your website'} to listen for telemetry beacon...
+                      Listening for incoming telemetry events from {formData.websiteUrl || 'your website'}...
                     </p>
                   </>
                 )}
@@ -342,7 +413,16 @@ export function Step2TrackingSnippet({
                       ✓ Snippet detected — telemetry is now live
                     </h4>
                     <p className="onboarding-verify-desc">
-                      Edge node connected to <strong>{verificationResult?.clusterRegion || 'us-east-1'}</strong> with {verificationResult?.firstEventLatency || '28ms'} initial latency handshake.
+                      {verificationResult?.clusterRegion ? (
+                        <>Connected to <strong>{verificationResult.clusterRegion}</strong>{verificationResult?.firstEventLatency ? ` with ${verificationResult.firstEventLatency} latency.` : '.'}</>
+                      ) : (
+                        <>Telemetry stream confirmed active for Business ID <strong>{businessId}</strong>.</>
+                      )}
+                      {verificationResult?.detectedAt && (
+                        <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', opacity: 0.85 }}>
+                          First event received: {new Date(verificationResult.detectedAt).toLocaleTimeString()}
+                        </span>
+                      )}
                     </p>
                     {/* Live events ticker */}
                     <div className="onboarding-live-ticker">
@@ -357,10 +437,10 @@ export function Step2TrackingSnippet({
                 {verificationState === 'failed' && (
                   <>
                     <h4 className="onboarding-verify-title onboarding-verify-title--failed">
-                      Snippet not detected yet
+                      Snippet not detected
                     </h4>
                     <p className="onboarding-verify-desc">
-                      {verificationResult?.error || 'Make sure the snippet is installed inside your <head> tag and that any caching layer is cleared.'}
+                      {verificationResult?.error || "We haven't received telemetry from your website yet. Make sure the snippet is installed inside your <head> tag and transmits events."}
                     </p>
                   </>
                 )}
@@ -371,7 +451,7 @@ export function Step2TrackingSnippet({
               {verificationState === 'idle' && (
                 <Button
                   variant="primary"
-                  onClick={() => handleVerify(false)}
+                  onClick={handleVerify}
                   icon={
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polygon points="5 3 19 12 5 21 5 3" />
@@ -398,7 +478,7 @@ export function Step2TrackingSnippet({
                 <div className="onboarding-verify-retry-group">
                   <Button
                     variant="secondary"
-                    onClick={() => handleVerify(false)}
+                    onClick={handleVerify}
                     icon={
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="23 4 23 10 17 10" />
@@ -439,13 +519,15 @@ export function Step2TrackingSnippet({
           <Button
             variant="primary"
             onClick={onNext}
+            disabled={verificationState !== 'success'}
+            title={verificationState !== 'success' ? 'Verify snippet installation to continue, or click "Skip for now" below' : ''}
             iconRight={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             }
           >
-            {verificationState === 'success' ? 'Continue to KPI Setup' : 'Next Step'}
+            {verificationState === 'success' ? 'Continue to KPI Setup' : 'Continue to KPI Setup'}
           </Button>
         </div>
       </div>

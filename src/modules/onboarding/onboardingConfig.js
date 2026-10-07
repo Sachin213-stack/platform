@@ -360,82 +360,66 @@ export function validateUrl(url) {
 
 /**
  * Verification Engine Integration Point:
- * Dispatches a real telemetry beacon to the FastAPI backend ingestion pipeline.
+ * Checks authentic telemetry receipt directly from the FastAPI backend ingestion pipeline.
+ * Does not emit synthetic beacons or simulate successful states.
  */
-export async function verifySnippetInstallation({ businessId, websiteUrl, apiKey = null, simulateFailure = false }) {
-  if (simulateFailure) {
+export async function verifySnippetInstallation({ businessId, websiteUrl, apiKey = null }) {
+  if (!businessId) {
     return {
       success: false,
-      message: `Snippet for ${businessId} not detected yet on ${websiteUrl}. Make sure it is installed inside the <head> tag and try again.`,
-      error: `Snippet for ${businessId} not detected yet on ${websiteUrl}. Make sure it is installed inside the <head> tag and try again.`,
+      verified: false,
+      message: 'Business ID is required to verify telemetry installation.',
+      error: 'Business ID is missing.',
+      businessId: null,
+      eventCount: 0,
       detectedAt: null,
-      httpStatus: 200,
+      httpStatus: 400,
     };
   }
 
-  const startTime = performance.now();
   try {
-    // 1. Check if snippet is already present in current DOM (e.g. if installed in host app)
-    let domDetected = false;
-    if (typeof document !== 'undefined') {
-      const scripts = Array.from(document.getElementsByTagName('script'));
-      domDetected = scripts.some(
-        (s) => (s.src && s.src.includes('tracker.js')) || s.getAttribute('data-business-id') === businessId
-      );
-    }
+    const res = await ingestionApi.getVerificationStatus(businessId, apiKey);
 
-    // 2. Dispatch real telemetry verification beacon to FastAPI backend ingestion pipeline
-    const res = await ingestionApi.sendEvent({
-      business_id: businessId,
-      event_type: 'beacon_verification',
-      endpoint: websiteUrl || (typeof window !== 'undefined' ? window.location.href : 'https://example.com'),
-      response_time_ms: 32.5,
-      status_code: 200,
-      payload_metadata: {
-        source: 'snippet_installer',
-        installer_version: '2.0.0',
-        dom_detected: domDetected,
-      },
-    }, apiKey);
-
-    // 3. Confirm ingestion acceptance by FastAPI backend
-    if (!res || (res.status !== 'accepted' && !res.event_id)) {
+    if (res && res.verified) {
+      const latencyStr = res.connection?.latency_ms || (res.last_event?.response_time_ms != null ? `${Math.round(res.last_event.response_time_ms)}ms` : null);
       return {
-        success: false,
-        message: `Snippet for ${businessId} not detected yet. Ingestion pipeline rejected verification beacon.`,
-        error: `Snippet for ${businessId} not detected yet on ${websiteUrl}. Make sure it is installed inside the <head> tag and transmitting events.`,
-        detectedAt: null,
-        httpStatus: 400,
+        success: true,
+        verified: true,
+        businessId: res.business_id || businessId,
+        message: res.message || 'Snippet detected — telemetry is now live',
+        eventId: res.last_event?.id || null,
+        detectedAt: res.last_event_at || (res.last_event?.timestamp ? String(res.last_event.timestamp) : null),
+        firstEventLatency: latencyStr,
+        clusterRegion: res.connection?.region || null,
+        eventCount: res.event_count || 1,
+        sampleEvent: res.last_event || null,
+        httpStatus: 200,
       };
     }
 
-    const latency = Math.max(12, Math.round(performance.now() - startTime));
-
-    return {
-      success: true,
-      message: 'Snippet detected & telemetry stream confirmed active',
-      businessId,
-      eventId: res?.event_id || `ev_${Date.now()}`,
-      detectedAt: new Date().toISOString(),
-      firstEventLatency: `${latency}ms`,
-      clusterRegion: 'us-east-1 (FastAPI + Redis Stream)',
-      clientIp: '127.0.0.1 (Local Gateway)',
-      sampleEvent: {
-        type: 'BEACON_VERIFICATION',
-        url: websiteUrl || 'https://example.com',
-        time: 'Just now',
-        status: 200,
-      },
-    };
-  } catch (err) {
-    const errorMsg = err?.message || 'Snippet verification failed: telemetry probe was not accepted.';
     return {
       success: false,
+      verified: false,
+      businessId,
+      message: res?.message || `Snippet for ${businessId} not detected yet. We haven't received telemetry from your website yet.`,
+      error: res?.message || `Snippet for ${businessId} not detected yet on ${websiteUrl || 'your website'}. Make sure it is installed inside the <head> tag and transmits events.`,
+      detectedAt: null,
+      eventCount: 0,
+      httpStatus: 200,
+    };
+  } catch (err) {
+    const errorMsg = err?.message || 'Snippet verification failed: could not connect to backend verification service.';
+    return {
+      success: false,
+      verified: false,
+      businessId,
       message: errorMsg,
       error: errorMsg,
       detectedAt: null,
+      eventCount: 0,
       httpStatus: err?.status || 500,
     };
   }
 }
+
 
