@@ -7,8 +7,7 @@ import {
   generateTrackingSnippet,
   verifySnippetInstallation,
 } from '../onboardingConfig';
-import { getStoredUser, apiKeysApi, dashboardApi } from '../../../shared/services/apiClient';
-import { useTenant } from '../../../shared/context/TenantContext';
+import { apiKeysApi, dashboardApi } from '../../../shared/services/apiClient';
 
 export function Step2TrackingSnippet({
   formData,
@@ -17,9 +16,6 @@ export function Step2TrackingSnippet({
   onBack,
   onCancel,
 }) {
-  const { selectedBusiness } = useTenant();
-  const stored = getStoredUser();
-  const activeDbUuid = stored?.business_id || (selectedBusiness?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedBusiness.id) ? selectedBusiness.id : null);
 
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('html'); // 'html' | 'gtm' | 'react' | 'shopify'
@@ -33,14 +29,14 @@ export function Step2TrackingSnippet({
   useEffect(() => {
     const isCurrentValidUuid = formData.businessId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(formData.businessId);
     if (!isCurrentValidUuid) {
-      const targetId = activeDbUuid || generateBusinessId();
+      const targetId = generateBusinessId();
       onChange('businessId', targetId);
     }
-  }, [formData.businessId, activeDbUuid, onChange]);
+  }, [formData.businessId, onChange]);
 
   const businessId = (formData.businessId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(formData.businessId))
     ? formData.businessId
-    : (activeDbUuid || generateBusinessId());
+    : generateBusinessId();
 
   // Retrieve or generate real API key for this business
   const [apiKey, setApiKey] = useState(() => {

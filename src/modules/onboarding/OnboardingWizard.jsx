@@ -10,7 +10,6 @@ import { Step3KpiConfirmation } from './components/Step3KpiConfirmation';
 import { Step4Integrations } from './components/Step4Integrations';
 import { Step5ReviewFinish } from './components/Step5ReviewFinish';
 import { BUSINESS_TYPES, getDetectedTimezone, generateBusinessId } from './onboardingConfig';
-import { getStoredUser } from '../../shared/services/apiClient';
 
 const INITIAL_FORM_DATA = {
   businessName: '',
@@ -25,7 +24,7 @@ const INITIAL_FORM_DATA = {
 };
 
 export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
-  const { selectedBusiness, addBusiness, saveWizardDraft, loadWizardDraft, clearWizardDraft } = useTenant();
+  const { addBusiness, saveWizardDraft, loadWizardDraft, clearWizardDraft, onboardingInitialData } = useTenant();
   const { addToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -48,22 +47,22 @@ export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
         setCurrentStep(draft.currentStep || 1);
         setCompletedSteps(draft.completedSteps || []);
       } else {
-        // Initialize fresh - ensure businessId matches the database UUID
+        // Initialize fresh - ensure a fresh business UUID is generated for a new business
         const detectedTz = getDetectedTimezone();
-        const stored = getStoredUser();
-        const existingBizId = stored?.business_id || (selectedBusiness?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedBusiness.id) ? selectedBusiness.id : null);
-        const resolvedBizId = existingBizId || generateBusinessId();
+        const isEditingExisting = Boolean(onboardingInitialData && onboardingInitialData.id);
+        const resolvedBizId = isEditingExisting ? onboardingInitialData.id : generateBusinessId();
 
         setFormData({
           ...INITIAL_FORM_DATA,
-          timezone: detectedTz,
+          ...(isEditingExisting ? onboardingInitialData : {}),
+          timezone: isEditingExisting ? (onboardingInitialData.timezone || detectedTz) : detectedTz,
           businessId: resolvedBizId,
         });
         setCurrentStep(1);
         setCompletedSteps([]);
       }
     }
-  }, [isOpen, loadWizardDraft, selectedBusiness]);
+  }, [isOpen, loadWizardDraft, onboardingInitialData]);
 
   // Auto-save draft on changes
   useEffect(() => {
