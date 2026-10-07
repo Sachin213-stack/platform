@@ -15,6 +15,7 @@ export function DashboardTopBar({
   selectedBusiness: propSelectedBusiness,
   onBusinessChange,
   isConnected,
+  latencyMs = null,
   onToggleConnection,
   unreadAlertCount = 0,
   notifications = [],
@@ -156,17 +157,18 @@ export function DashboardTopBar({
       {/* ── Right: Live Indicators, Refresh Controls, Notifications, Shortcuts ── */}
       <div className="dashboard-topbar__right">
         {/* Connection Status Pill */}
-        <button
+        <div
           className={`dashboard-status-pill ${isConnected ? 'dashboard-status-pill--connected' : 'dashboard-status-pill--disconnected'}`}
+          title={isConnected ? (latencyMs != null ? `Live Telemetry (${Math.round(latencyMs)}ms)` : 'Live Telemetry') : 'Offline (backend unreachable)'}
+          style={{ cursor: onToggleConnection ? 'pointer' : 'default' }}
           onClick={onToggleConnection}
-          title={isConnected ? 'Click to simulate disconnect' : 'Click to reconnect'}
         >
           <span className="dashboard-status-pill__dot" />
           <span className="dashboard-status-pill__label">
             {isConnected ? 'Live Telemetry' : 'Offline'}
           </span>
-          <span className="dashboard-status-pill__ping">{isConnected ? '32ms' : '—'}</span>
-        </button>
+          <span className="dashboard-status-pill__ping">{isConnected && latencyMs != null ? `${Math.round(latencyMs)}ms` : '—'}</span>
+        </div>
 
         {/* Last updated timestamp */}
         <div className="dashboard-topbar__updated-ticker" title="Last metrics refresh time">

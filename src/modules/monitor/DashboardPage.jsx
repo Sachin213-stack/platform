@@ -19,7 +19,7 @@ import { CapacitySnapshot } from './components/CapacitySnapshot';
 import { RecentActivityFeed } from './components/RecentActivityFeed';
 import { DashboardSkeleton, DashboardErrorState } from './components/DashboardSkeleton';
 import { useTenant } from '../../shared/context/TenantContext';
-import { dashboardApi, apiKeysApi } from '../../shared/services/apiClient';
+import { dashboardApi, apiKeysApi, ingestionApi, healthApi } from '../../shared/services/apiClient';
 import { generateTrackingSnippet, getBackendBaseUrl } from '../onboarding/onboardingConfig';
 
 /**
@@ -29,12 +29,41 @@ import { generateTrackingSnippet, getBackendBaseUrl } from '../onboarding/onboar
  */
 export default function DashboardPage({ onNavigate, onShowToast }) {
   // ── State Management ───────────────────────────────────────────
-  const { selectedBusiness, setSelectedBusiness } = useTenant();
-  const [isConnected, setIsConnected] = useState(true);
+  const { selectedBusiness, setSelectedBusiness, updateSelectedBusiness } = useTenant();
+  const [isConnected, setIsConnected] = useState(false);
+  const [latencyMs, setLatencyMs] = useState(null);
+  const [isVerified, setIsVerified] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5s default
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardApiKey, setDashboardApiKey] = useState('');
+
+  // ── Source of Truth Telemetry Verification Check ─────────────────
+  useEffect(() => {
+    let isCancelled = false;
+    async function checkVerificationStatus() {
+      if (!selectedBusiness?.id) return;
+      try {
+        const res = await ingestionApi.getVerificationStatus(selectedBusiness.id);
+        if (!isCancelled && res) {
+          const verifiedVal = Boolean(res.verified);
+          setIsVerified(verifiedVal);
+          if (updateSelectedBusiness) {
+            updateSelectedBusiness({ verified: verifiedVal });
+          }
+        }
+      } catch (_err) {
+        if (!isCancelled) {
+          setIsVerified(false);
+          if (updateSelectedBusiness) {
+            updateSelectedBusiness({ verified: false });
+          }
+        }
+      }
+    }
+    checkVerificationStatus();
+    return () => { isCancelled = true; };
+  }, [selectedBusiness?.id, updateSelectedBusiness]);
 
   useEffect(() => {
     let isMounted = true;
@@ -395,9 +424,26 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const refreshTelemetry = useCallback(async (silent = false) => {
     if (!silent) setIsRefreshing(true);
 
+    const startTime = (typeof window !== 'undefined' && window.performance && window.performance.now)
+      ? performance.now()
+      : Date.now();
+
     try {
       // Call backend metrics endpoint scoped to currently selected tenant
-      const metricsData = await dashboardApi.getMetrics(selectedBusiness?.id);
+      let metricsData = null;
+      if (selectedBusiness?.id) {
+        metricsData = await dashboardApi.getMetrics(selectedBusiness.id);
+      } else {
+        await healthApi.checkHealth();
+      }
+
+      const endTime = (typeof window !== 'undefined' && window.performance && window.performance.now)
+        ? performance.now()
+        : Date.now();
+      const elapsed = Math.round(endTime - startTime);
+
+      setIsConnected(true);
+      setLatencyMs(elapsed);
       if (metricsData) {
         setHasLiveData(Boolean(metricsData.has_live_data));
         if (metricsData.timeseries && metricsData.timeseries.length > 0) {
@@ -473,7 +519,9 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
 
       setLastUpdatedSeconds(0);
     } catch (_err) {
-      // In offline or disconnected state, do not inject fake telemetry events
+      // Offline / backend unreachable: reflect honest network status
+      setIsConnected(false);
+      setLatencyMs(null);
       setLastUpdatedSeconds(0);
     } finally {
       setIsRefreshing(false);
@@ -486,12 +534,12 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   }, [refreshTelemetry]);
 
   useEffect(() => {
-    if (!autoRefresh || !isConnected) return;
+    if (!autoRefresh) return;
     const interval = setInterval(() => {
       refreshTelemetry(true);
     }, refreshInterval);
     return () => clearInterval(interval);
-  }, [autoRefresh, isConnected, refreshInterval, refreshTelemetry]);
+  }, [autoRefresh, refreshInterval, refreshTelemetry]);
 
   // ── Actions & Mitigations ───────────────────────────────────────
   const handleApplyRecommendation = (anomaly) => {
@@ -608,17 +656,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
           }
         }}
         isConnected={isConnected}
-        onToggleConnection={() => {
-          const next = !isConnected;
-          setIsConnected(next);
-          if (onShowToast) {
-            onShowToast({
-              title: next ? 'Telemetry Stream Reconnected' : 'Telemetry Stream Disconnected',
-              message: next ? 'Live node telemetry is syncing.' : 'Dashboard is operating in offline mode.',
-              variant: next ? 'success' : 'warning',
-            });
-          }
-        }}
+        latencyMs={latencyMs}
         unreadAlertCount={anomalies.length}
         notifications={anomalies}
         onDismissNotification={handleDismissNotification}
@@ -637,10 +675,10 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         margin: 'var(--space-2) 0 var(--space-4)',
         padding: '12px 18px',
         borderRadius: 'var(--radius-lg)',
-        background: hasLiveData 
+        background: (hasLiveData || isVerified) 
           ? 'linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.04))'
           : 'linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.04))',
-        border: hasLiveData
+        border: (hasLiveData || isVerified)
           ? '1px solid rgba(16, 185, 129, 0.3)'
           : '1px solid rgba(245, 158, 11, 0.3)',
         display: 'flex',
@@ -654,12 +692,12 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
             width: '10px',
             height: '10px',
             borderRadius: '50%',
-            backgroundColor: hasLiveData ? '#10b981' : '#f59e0b',
-            boxShadow: hasLiveData ? '0 0 10px #10b981' : '0 0 8px #f59e0b',
+            backgroundColor: (hasLiveData || isVerified) ? '#10b981' : '#f59e0b',
+            boxShadow: (hasLiveData || isVerified) ? '0 0 10px #10b981' : '0 0 8px #f59e0b',
             display: 'inline-block',
           }} />
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-            {hasLiveData
+            {(hasLiveData || isVerified)
               ? 'Active Website Telemetry Connected — Ingesting live microservice metrics & transactions'
               : 'Awaiting Live Telemetry — Install tracking snippet or send ingestion events to stream metrics'}
           </span>
@@ -677,18 +715,18 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
             fontWeight: 500,
           }}
         >
-          {hasLiveData ? '🔌 View Ingestion Snippet' : '⚡ Connect Tracking Snippet'}
+          {(hasLiveData || isVerified) ? '🔌 View Ingestion Snippet' : '⚡ Connect Tracking Snippet'}
         </button>
       </div>
 
       {/* ── 2. Health Status Banner ──────────────────────────────── */}
       <HealthStatusBanner
-        healthScore={hasLiveData ? healthScore : 100}
-        status={hasLiveData ? healthStatus : 'healthy'}
-        anomalyCount={hasLiveData ? anomalies.length : 0}
-        activeServices={hasLiveData ? "14/14" : "Standby"}
-        uptime={hasLiveData ? "99.98%" : "100%"}
-        avgLatency={hasLiveData && liveKpis && liveKpis.response_time_ms > 0 ? `${liveKpis.response_time_ms}ms` : '--'}
+        healthScore={(hasLiveData || isVerified) ? healthScore : 100}
+        status={(hasLiveData || isVerified) ? healthStatus : 'healthy'}
+        anomalyCount={(hasLiveData || isVerified) ? anomalies.length : 0}
+        activeServices={(hasLiveData || isVerified) ? "14/14" : "Standby"}
+        uptime={(hasLiveData || isVerified) ? "99.98%" : "100%"}
+        avgLatency={(hasLiveData || isVerified) && liveKpis && liveKpis.response_time_ms > 0 ? `${liveKpis.response_time_ms}ms` : (latencyMs != null ? `${latencyMs}ms` : '--')}
         onInspectAnomalies={() => {
           const el = document.getElementById('anomalies-section-anchor');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
