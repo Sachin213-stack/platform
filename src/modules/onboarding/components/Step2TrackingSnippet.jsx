@@ -38,42 +38,52 @@ export function Step2TrackingSnippet({
     ? formData.businessId
     : generateBusinessId();
 
-  // Retrieve or generate real API key for this business
+  // Retrieve or generate publishable API key (pk_live_...) for this business
   const [apiKey, setApiKey] = useState(() => {
-    return formData.apiKey || localStorage.getItem(`aicto_api_key_${businessId}`) || '';
+    const stored = formData.apiKey || localStorage.getItem(`aicto_pk_key_${businessId}`) || '';
+    return stored.startsWith('pk_') ? stored : '';
   });
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  async function handleRegenerateKey() {
+    setIsRegenerating(true);
+    try {
+      const res = await apiKeysApi.regeneratePublishableKey(businessId);
+      if (res && res.publishable_key) {
+        setApiKey(res.publishable_key);
+        onChange('apiKey', res.publishable_key);
+        localStorage.setItem(`aicto_pk_key_${businessId}`, res.publishable_key);
+      }
+    } catch (err) {
+      console.error('Failed to regenerate publishable key:', err);
+    } finally {
+      setIsRegenerating(false);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
     async function loadOrCreateKey() {
       try {
-        const storedKey = formData.apiKey || localStorage.getItem(`aicto_api_key_${businessId}`);
-        if (storedKey) {
+        const storedKey = formData.apiKey || localStorage.getItem(`aicto_pk_key_${businessId}`);
+        if (storedKey && storedKey.startsWith('pk_')) {
           if (isMounted) setApiKey(storedKey);
           return;
         }
-        const keys = await apiKeysApi.getKeys(businessId);
-        if (keys && keys.length > 0 && keys[0].api_key) {
-          if (isMounted) {
-            setApiKey(keys[0].api_key);
-            onChange('apiKey', keys[0].api_key);
-            localStorage.setItem(`aicto_api_key_${businessId}`, keys[0].api_key);
-          }
+        const res = await apiKeysApi.getPublishableKey(businessId);
+        if (res && res.publishable_key && isMounted) {
+          setApiKey(res.publishable_key);
+          onChange('apiKey', res.publishable_key);
+          localStorage.setItem(`aicto_pk_key_${businessId}`, res.publishable_key);
           return;
         }
-        const created = await apiKeysApi.createKey('Website Telemetry Snippet Key', businessId);
-        if (created && created.api_key && isMounted) {
-          setApiKey(created.api_key);
-          onChange('apiKey', created.api_key);
-          localStorage.setItem(`aicto_api_key_${businessId}`, created.api_key);
-        }
       } catch (err) {
-        console.warn('Could not fetch API key:', err);
-        const fallbackKey = `sk_live_${businessId.replace(/-/g, '').slice(0, 24)}`;
+        console.warn('Could not fetch publishable key:', err);
+        const fallbackKey = `pk_live_${businessId.replace(/-/g, '').slice(0, 24)}`;
         if (isMounted) {
           setApiKey(fallbackKey);
           onChange('apiKey', fallbackKey);
-          localStorage.setItem(`aicto_api_key_${businessId}`, fallbackKey);
+          localStorage.setItem(`aicto_pk_key_${businessId}`, fallbackKey);
         }
       }
     }
@@ -82,6 +92,7 @@ export function Step2TrackingSnippet({
   }, [businessId, formData.apiKey, onChange]);
 
   const snippetCode = generateTrackingSnippet(businessId, apiKey);
+
 
   // 1. Initial Mount Check: Always consult real backend state (never assume success from localStorage draft)
   useEffect(() => {
@@ -250,9 +261,26 @@ export function Step2TrackingSnippet({
                 <code className="onboarding-biz-id-pill__code">{businessId}</code>
               </div>
               {apiKey && (
-                <div className="onboarding-biz-id-pill">
-                  <span className="onboarding-biz-id-pill__label">Snippet API Key:</span>
+                <div className="onboarding-biz-id-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="onboarding-biz-id-pill__label">Publishable Key:</span>
                   <code className="onboarding-biz-id-pill__code">{apiKey}</code>
+                  <button
+                    type="button"
+                    onClick={handleRegenerateKey}
+                    disabled={isRegenerating}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-primary-400, #818cf8)',
+                      cursor: isRegenerating ? 'not-allowed' : 'pointer',
+                      fontSize: '11px',
+                      textDecoration: 'underline',
+                      padding: '0 2px',
+                    }}
+                    title="Generate a fresh publishable key for this business"
+                  >
+                    {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                  </button>
                 </div>
               )}
             </div>

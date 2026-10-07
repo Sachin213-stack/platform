@@ -582,14 +582,23 @@ export const apiKeysApi = {
     const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
     return await request(`/users/api-keys${query}`, { method: 'GET' });
   },
-  async createKey(name = 'Website Telemetry Snippet Key', businessId = null) {
+  async getPublishableKey(businessId = null) {
+    const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
+    return await request(`/users/api-keys/publishable${query}`, { method: 'GET' });
+  },
+  async regeneratePublishableKey(businessId = null) {
+    const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
+    return await request(`/users/api-keys/publishable/regenerate${query}`, { method: 'POST' });
+  },
+  async createKey(name = 'Website Telemetry Snippet Key', businessId = null, keyType = 'publishable') {
     const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : '';
     return await request(`/users/api-keys${query}`, {
       method: 'POST',
-      body: JSON.stringify({ name, business_id: businessId }),
+      body: JSON.stringify({ name, business_id: businessId, key_type: keyType }),
     });
   },
 };
+
 
 export default {
   auth: authApi,
