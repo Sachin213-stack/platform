@@ -17,6 +17,7 @@ export function AuthModal({
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [fullName, setFullName] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
 
   if (!isOpen) return null;
 
@@ -35,6 +36,7 @@ export function AuthModal({
           email,
           password,
           full_name: fullName || email.split('@')[0],
+          website_url: websiteUrl.trim() || undefined,
         });
         if (onSuccess) onSuccess(data);
       }
@@ -152,6 +154,17 @@ export function AuthModal({
                     placeholder="e.g. Jane Doe"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    className="auth-input"
+                  />
+                </div>
+
+                <div className="auth-field-group">
+                  <label className="auth-label">Website URL (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. https://mybrand.com"
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
                     className="auth-input"
                   />
                 </div>

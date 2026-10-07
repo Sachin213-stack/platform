@@ -241,10 +241,13 @@ export const userApi = {
 // Auth API Endpoints (Delegates to canonical userApi)
 // ==========================================
 export const authApi = {
-  async register({ business_name, email, password, full_name }) {
+  async register({ business_name, email, password, full_name, website_url, websiteUrl }) {
+    const payload = { business_name, email, password, full_name };
+    const domain = website_url || websiteUrl;
+    if (domain) payload.website_url = domain;
     const data = await request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ business_name, email, password, full_name }),
+      body: JSON.stringify(payload),
     });
     const initialUser = {
       email,
