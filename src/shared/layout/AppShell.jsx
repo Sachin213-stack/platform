@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import './AppShell.css';
 import { useAnalytics } from '../context/AnalyticsContext';
+import { useTenant } from '../context/TenantContext';
 import { getStoredUser, healthApi, userApi } from '../services/apiClient';
 import { FridayVoiceOverlay } from '../../modules/act/components/FridayVoiceOverlay';
 import { FridayFloatingCompanion } from '../../modules/act/components/FridayFloatingCompanion';
@@ -311,6 +312,7 @@ export default function AppShell({
 
 function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, onSignOut }) {
   const { activeAnomaliesCount } = useAnalytics();
+  const { isOnboarded } = useTenant() || {};
   const [backendHealth, setBackendHealth] = useState({ status: 'checking', version: '2.0.0' });
   const [storedUser, setStoredUser] = useState(() => getStoredUser());
 
@@ -392,7 +394,14 @@ function DefaultSidebar({ collapsed, currentNav, onNavClick, onToggleCollapse, o
                     {activeAnomaliesCount}
                   </span>
                 ) : (
-                  item.badge && <span className="sidebar-nav__badge">{item.badge}</span>
+                  item.badge && (
+                    <span
+                      className={`sidebar-nav__badge ${item.id === 'logs' && !isOnboarded ? 'sidebar-nav__badge--locked' : ''}`}
+                      title={item.id === 'logs' && !isOnboarded ? 'Logs stream unlocks after onboarding' : undefined}
+                    >
+                      {item.id === 'logs' ? (isOnboarded ? 'Live' : 'Setup') : item.badge}
+                    </span>
+                  )
                 )}
                 {item.id === 'friday-ai' && (
                   <span className="status-dot status-dot--online" title="Online" />

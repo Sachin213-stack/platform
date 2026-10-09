@@ -6,14 +6,16 @@ import { LogFilterBar } from './components/LogFilterBar';
 import { LogStreamPanel } from './components/LogStreamPanel';
 import { LogDetailDrawer } from './components/LogDetailDrawer';
 import { LogShippingModal } from './components/LogShippingModal';
+import { Button } from '../../../shared/components/Button';
+import { generateTrackingSnippet } from '../../onboarding/onboardingConfig';
 
 import { useTenant } from '../../../shared/context/TenantContext';
-import { logsApi, apiKeysApi } from '../../../shared/services/apiClient';
+import { logsApi, apiKeysApi, ingestionApi } from '../../../shared/services/apiClient';
 
 const MAX_DOM_LINES = 800;
 
 export default function LogsPage({ onNavigate, initialContext }) {
-  const { selectedBusiness } = useTenant();
+  const { selectedBusiness, isOnboarded, openOnboarding, markBusinessOnboarded } = useTenant();
 
   // ── Stream & Logs State ──────────────────────────────────────────
   const [logs, setLogs] = useState([]);
@@ -21,6 +23,11 @@ export default function LogsPage({ onNavigate, initialContext }) {
   const [isLive, setIsLive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isReconnecting, setIsReconnecting] = useState(false);
+
+  // ── Onboarding Gate & Verification State ─────────────────────────
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyFeedback, setVerifyFeedback] = useState(null);
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   // ── Credentials & Test Probe State ──────────────────────────────
   const [dashboardApiKey, setDashboardApiKey] = useState('');
@@ -69,17 +76,36 @@ export default function LogsPage({ onNavigate, initialContext }) {
     return () => { isMounted = false; };
   }, [selectedBusiness?.id]);
 
-  // 1. Fetch available sources on mount
+  // Check backend verification status asynchronously if business is not yet onboarded
   useEffect(() => {
+    let active = true;
+    if (!isOnboarded && selectedBusiness?.id) {
+      ingestionApi.getVerificationStatus(selectedBusiness.id)
+        .then((res) => {
+          if (active && res && res.verified) {
+            markBusinessOnboarded?.(selectedBusiness.id);
+          }
+        })
+        .catch(() => {
+          // Silent catch for initial verification check
+        });
+    }
+    return () => { active = false; };
+  }, [isOnboarded, selectedBusiness?.id, markBusinessOnboarded]);
+
+  // 1. Fetch available sources on mount (only when onboarded)
+  useEffect(() => {
+    if (!isOnboarded) return;
     logsApi.getSources()
       .then((res) => {
         if (res?.sources) setSources(res.sources);
       })
       .catch((err) => console.warn('Could not fetch log sources:', err));
-  }, []);
+  }, [isOnboarded]);
 
-  // 2. Handle initialContext from Anomaly Deep-Link
+  // 2. Handle initialContext from Anomaly Deep-Link (only when onboarded)
   useEffect(() => {
+    if (!isOnboarded) return;
     if (initialContext?.anomalyId || initialContext?.anomaly) {
       const anom = initialContext.anomaly || {};
       const anomId = initialContext.anomalyId || anom.id;
@@ -111,10 +137,11 @@ export default function LogsPage({ onNavigate, initialContext }) {
           setIsLoading(false);
         });
     }
-  }, [initialContext]);
+  }, [isOnboarded, initialContext]);
 
   // 3. Query historical logs when not deep-linked or when filters change while paused
   const fetchQueryLogs = useCallback(async () => {
+    if (!isOnboarded) return;
     if (anomalyContext) return; // Don't overwrite anomaly window
     setIsLoading(true);
 
@@ -147,18 +174,19 @@ export default function LogsPage({ onNavigate, initialContext }) {
     } finally {
       setIsLoading(false);
     }
-  }, [anomalyContext, timePreset, logType, selectedLevels, source, searchQuery, selectedBusiness?.id]);
+  }, [isOnboarded, anomalyContext, timePreset, logType, selectedLevels, source, searchQuery, selectedBusiness?.id]);
 
   // Trigger query on filter change if paused
   useEffect(() => {
+    if (!isOnboarded) return;
     if (!isLive && !anomalyContext) {
       fetchQueryLogs();
     }
-  }, [fetchQueryLogs, isLive, anomalyContext]);
+  }, [isOnboarded, fetchQueryLogs, isLive, anomalyContext]);
 
   // 4. Connect SSE Live-Tail Stream when isLive is true
   useEffect(() => {
-    if (!isLive || anomalyContext) {
+    if (!isOnboarded || !isLive || anomalyContext) {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -219,7 +247,7 @@ export default function LogsPage({ onNavigate, initialContext }) {
       if (es) es.close();
       clearTimeout(reconnectTimeoutRef.current);
     };
-  }, [isLive, anomalyContext, selectedLevels, source, logType, searchQuery, fetchQueryLogs]);
+  }, [isOnboarded, isLive, anomalyContext, selectedLevels, source, logType, searchQuery, fetchQueryLogs]);
 
   // Level filter toggle handler
   const handleToggleLevel = (lvl) => {
@@ -297,6 +325,169 @@ export default function LogsPage({ onNavigate, initialContext }) {
       });
     }
   };
+
+  // Copy snippet to clipboard
+  const handleCopySnippet = () => {
+    const snippet = generateTrackingSnippet(
+      selectedBusiness?.id || '11111111-1111-1111-1111-111111111111',
+      dashboardApiKey
+    );
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(snippet);
+    }
+    setCopiedSnippet(true);
+    setTimeout(() => setCopiedSnippet(false), 2500);
+  };
+
+  // Check telemetry verification status directly from backend
+  const handleCheckVerification = async () => {
+    if (!selectedBusiness?.id) {
+      setVerifyFeedback({
+        type: 'error',
+        text: 'No active organization found. Please complete the onboarding wizard first.',
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerifyFeedback({
+      type: 'checking',
+      text: 'Pinging telemetry ingestion pipeline for live beacons...',
+    });
+
+    try {
+      const res = await ingestionApi.getVerificationStatus(selectedBusiness.id);
+      if (res && res.verified) {
+        setVerifyFeedback({
+          type: 'success',
+          text: `Telemetry confirmed (${res.event_count || 1} events received)! Unlocking logs stream...`,
+        });
+        if (markBusinessOnboarded) {
+          markBusinessOnboarded(selectedBusiness.id);
+        }
+      } else {
+        setVerifyFeedback({
+          type: 'error',
+          text: res?.message || 'No telemetry events detected yet. Please ensure the snippet is installed and transmitting events.',
+        });
+      }
+    } catch (err) {
+      console.warn('Telemetry check error:', err);
+      setVerifyFeedback({
+        type: 'error',
+        text: 'Could not connect to telemetry verification service. Ensure your backend is running or complete onboarding.',
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // ── Gated Access Check: Render Gate when Tenant is Not Onboarded ─────
+  if (!isOnboarded) {
+    const trackingSnippet = generateTrackingSnippet(
+      selectedBusiness?.id || '11111111-1111-1111-1111-111111111111',
+      dashboardApiKey
+    );
+
+    return (
+      <div className="logs-page logs-page--unonboarded">
+        <div className="logs-onboarding-gate">
+          <div className="logs-onboarding-gate__icon-wrap">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+
+          <h2 className="logs-onboarding-gate__title">
+            Observability Logs Locked
+          </h2>
+          <p className="logs-onboarding-gate__subtitle">
+            System and application logs stream live only after completing onboarding and installing your tracking snippet on {selectedBusiness?.name || 'your application'}.
+          </p>
+
+          <div className="logs-onboarding-steps">
+            <div className="logs-onboarding-step logs-onboarding-step--done">
+              <div className="logs-onboarding-step__num">✓</div>
+              <div className="logs-onboarding-step__info">
+                <span className="logs-onboarding-step__label">1. Organization Created</span>
+                <span className="logs-onboarding-step__desc">{selectedBusiness?.name || 'Tenant profile active'}</span>
+              </div>
+              <span className="logs-onboarding-step__badge">Completed</span>
+            </div>
+
+            <div className="logs-onboarding-step logs-onboarding-step--active">
+              <div className="logs-onboarding-step__num">2</div>
+              <div className="logs-onboarding-step__info">
+                <span className="logs-onboarding-step__label">2. Install Snippet</span>
+                <span className="logs-onboarding-step__desc">Embed telemetry script in your &lt;head&gt; tag</span>
+              </div>
+              <span className="logs-onboarding-step__badge logs-onboarding-step__badge--warn">Setup Required</span>
+            </div>
+
+            <div className="logs-onboarding-step">
+              <div className="logs-onboarding-step__num">3</div>
+              <div className="logs-onboarding-step__info">
+                <span className="logs-onboarding-step__label">3. Live Log Stream</span>
+                <span className="logs-onboarding-step__desc">Real-time SSE tail, anomaly triage &amp; FRIDAY AI</span>
+              </div>
+              <span className="logs-onboarding-step__badge">Unlocks Next</span>
+            </div>
+          </div>
+
+          <div className="logs-onboarding-snippet-box">
+            <div className="logs-onboarding-snippet-header">
+              <span>Telemetry Quick-Start Snippet</span>
+              <button
+                type="button"
+                className="logs-onboarding-copy-btn"
+                onClick={handleCopySnippet}
+              >
+                {copiedSnippet ? 'Copied to Clipboard!' : 'Copy Snippet'}
+              </button>
+            </div>
+            <pre className="logs-onboarding-code">
+              <code>{trackingSnippet}</code>
+            </pre>
+          </div>
+
+          {verifyFeedback && (
+            <div className={`logs-onboarding-feedback logs-onboarding-feedback--${verifyFeedback.type}`}>
+              {verifyFeedback.text}
+            </div>
+          )}
+
+          <div className="logs-onboarding-actions">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                if (openOnboarding) {
+                  openOnboarding({
+                    businessId: selectedBusiness?.id,
+                    businessName: selectedBusiness?.name,
+                  });
+                } else if (onNavigate) {
+                  onNavigate('onboarding');
+                }
+              }}
+            >
+              Open Onboarding Wizard
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              loading={isVerifying}
+              onClick={handleCheckVerification}
+            >
+              Verify Telemetry Connection
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="logs-page">

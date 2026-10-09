@@ -145,10 +145,15 @@ export function OnboardingWizard({ isOpen, onClose, onCompleted }) {
       websiteUrl: formData.websiteUrl,
       timezone: formData.timezone || 'UTC',
       verified: formData.verificationStatus === 'success',
+      onboarded: true,
       activeKpis: formData.selectedKpis,
       integrations: formData.connectedIntegrations,
       createdAt: new Date().toISOString(),
     };
+
+    try {
+      localStorage.setItem(`aicto_onboarded_${newBusinessProfile.id}`, 'true');
+    } catch {}
 
     addBusiness(newBusinessProfile);
     clearWizardDraft();

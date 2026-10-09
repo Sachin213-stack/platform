@@ -263,6 +263,12 @@
   color: var(--color-accent);
 }
 
+.sidebar-nav__badge--locked {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
 .app-shell__sidebar--collapsed .sidebar-nav__badge {
   opacity: 0;
   width: 0;

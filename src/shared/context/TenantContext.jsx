@@ -14,6 +14,7 @@ export function TenantProvider({ children }) {
     try {
       const stored = getStoredUser();
       if (stored && stored.business_id) {
+        const isAlreadyOnboarded = localStorage.getItem(`aicto_onboarded_${stored.business_id}`) === 'true';
         const userBiz = {
           id: String(stored.business_id),
           name: stored.business_name || 'My Organization',
@@ -23,6 +24,7 @@ export function TenantProvider({ children }) {
           region: 'us-east-1',
           domain: stored.domain || `${(stored.business_name || 'org').toLowerCase().replace(/\s+/g, '-')}.io`,
           ops_email: stored.ops_email,
+          onboarded: isAlreadyOnboarded,
         };
         return [userBiz];
       }
@@ -91,6 +93,25 @@ export function TenantProvider({ children }) {
 
   // Derive active business object
   const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId) || businesses[0] || null;
+
+  // Determine if active business is onboarded (completed wizard or verified)
+  const isOnboarded = Boolean(
+    selectedBusiness && (
+      selectedBusiness.onboarded === true ||
+      selectedBusiness.verified === true ||
+      (selectedBusiness.id && localStorage.getItem(`aicto_onboarded_${selectedBusiness.id}`) === 'true')
+    )
+  );
+
+  const markBusinessOnboarded = (bizId = selectedBusinessId) => {
+    if (!bizId) return;
+    try {
+      localStorage.setItem(`aicto_onboarded_${bizId}`, 'true');
+    } catch {}
+    setBusinesses((prev) =>
+      prev.map((b) => (b.id === String(bizId) ? { ...b, onboarded: true, verified: true } : b))
+    );
+  };
 
   const switchBusiness = (businessOrId) => {
     const id = typeof businessOrId === 'string' ? businessOrId : businessOrId?.id;
@@ -218,6 +239,8 @@ export function TenantProvider({ children }) {
         saveWizardDraft,
         loadWizardDraft,
         clearWizardDraft,
+        isOnboarded,
+        markBusinessOnboarded,
       }}
     >
       {children}
