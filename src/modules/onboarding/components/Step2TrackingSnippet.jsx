@@ -100,10 +100,11 @@ export function Step2TrackingSnippet({
     async function checkInitialBackendState() {
       if (!businessId) return;
       try {
+        // Note: do NOT pass apiKey here — the verify endpoint rejects pk_ publishable keys.
+        // Bearer token (set automatically by apiClient) is the correct auth for verify.
         const result = await verifySnippetInstallation({
           businessId,
           websiteUrl: formData.websiteUrl,
-          apiKey,
         });
         if (!isMounted) return;
         if (result.success && result.verified) {
@@ -131,20 +132,33 @@ export function Step2TrackingSnippet({
 
     checkInitialBackendState();
     return () => { isMounted = false; };
-  }, [businessId, apiKey]); // run once per businessId/apiKey resolution
+  }, [businessId]); // run once per businessId resolution; apiKey excluded to avoid pk_ 403
 
-  // 2. Auto-Detection Polling: Poll backend while unverified to detect incoming telemetry in real-time
+  // 2. Auto-Detection Polling: Poll backend while unverified, with exponential backoff.
+  //    Backoff schedule: 5s → 10s → 30s → 60s (capped).
+  //    NOTE: Never pass apiKey to verify — pk_ publishable keys are rejected with 403.
+  //    onChange is intentionally excluded from the dep array: it is a prop that may be
+  //    recreated on every parent render, which would tear down and restart the interval
+  //    producing burst calls. businessId and verificationState are the actual sentinels.
   useEffect(() => {
     if (verificationState === 'success' || !businessId) return;
     let isCancelled = false;
+    let consecutiveFails = 0;
+    const BACKOFF = [5000, 10000, 30000, 60000];
 
-    const pollInterval = setInterval(async () => {
+    function getDelay() {
+      return BACKOFF[Math.min(consecutiveFails, BACKOFF.length - 1)];
+    }
+
+    let timeoutId;
+
+    async function poll() {
       if (isCancelled) return;
       try {
         const result = await verifySnippetInstallation({
           businessId,
           websiteUrl: formData.websiteUrl,
-          apiKey,
+          // no apiKey — Bearer token used automatically by apiClient
         });
         if (!isCancelled && result.success && result.verified) {
           setVerificationState('success');
@@ -152,17 +166,27 @@ export function Step2TrackingSnippet({
           setLiveEventCount(result.eventCount || 1);
           onChange('verificationStatus', 'success');
           onChange('verificationResult', result);
+          return; // stop polling — verified
         }
+        // Not verified yet — not an error, reset fail count
+        consecutiveFails = 0;
       } catch {
-        // Silent background polling failure: never fabricate success
+        // Network/auth failure: back off
+        consecutiveFails = Math.min(consecutiveFails + 1, BACKOFF.length - 1);
       }
-    }, 5000);
+      if (!isCancelled) {
+        timeoutId = setTimeout(poll, getDelay());
+      }
+    }
+
+    // Start first poll after initial delay
+    timeoutId = setTimeout(poll, getDelay());
 
     return () => {
       isCancelled = true;
-      clearInterval(pollInterval);
+      clearTimeout(timeoutId);
     };
-  }, [verificationState, businessId, apiKey, formData.websiteUrl, onChange]);
+  }, [verificationState, businessId]); // onChange and formData.websiteUrl excluded intentionally (see comment above)
 
   // 3. Live Streaming Ticker: When verified, refresh real event count directly from backend
   useEffect(() => {
@@ -199,10 +223,10 @@ export function Step2TrackingSnippet({
   const handleVerify = async () => {
     setVerificationState('checking');
     try {
+      // Note: do NOT pass apiKey — Bearer token is correct for the verify endpoint.
       const result = await verifySnippetInstallation({
         businessId,
         websiteUrl: formData.websiteUrl,
-        apiKey,
       });
 
       if (result.success && result.verified) {

@@ -504,14 +504,9 @@ export const ingestionApi = {
     });
   },
 
-  async getVerificationStatus(businessId, apiKey = null) {
-    const customHeaders = {};
-    if (apiKey) {
-      customHeaders['X-API-Key'] = apiKey;
-    }
+  async getVerificationStatus(businessId) {
     return await request(`/ingestion/verify/${encodeURIComponent(businessId)}`, {
       method: 'GET',
-      headers: customHeaders,
     });
   },
 };

@@ -39,31 +39,38 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
   const [dashboardApiKey, setDashboardApiKey] = useState('');
 
   // ── Source of Truth Telemetry Verification Check ─────────────────
+  // Keep a stable ref to updateSelectedBusiness to prevent the effect
+  // from looping when the context recreates the function reference.
+  const updateSelectedBusinessRef = React.useRef(updateSelectedBusiness);
+  React.useEffect(() => { updateSelectedBusinessRef.current = updateSelectedBusiness; });
+
   useEffect(() => {
     let isCancelled = false;
     async function checkVerificationStatus() {
       if (!selectedBusiness?.id) return;
       try {
+        // Use Bearer token (no apiKey) — verify endpoint rejects publishable keys
         const res = await ingestionApi.getVerificationStatus(selectedBusiness.id);
         if (!isCancelled && res) {
           const verifiedVal = Boolean(res.verified);
           setIsVerified(verifiedVal);
-          if (updateSelectedBusiness) {
-            updateSelectedBusiness({ verified: verifiedVal });
+          if (updateSelectedBusinessRef.current) {
+            updateSelectedBusinessRef.current({ verified: verifiedVal });
           }
         }
       } catch (_err) {
         if (!isCancelled) {
           setIsVerified(false);
-          if (updateSelectedBusiness) {
-            updateSelectedBusiness({ verified: false });
+          if (updateSelectedBusinessRef.current) {
+            updateSelectedBusinessRef.current({ verified: false });
           }
         }
       }
     }
     checkVerificationStatus();
     return () => { isCancelled = true; };
-  }, [selectedBusiness?.id, updateSelectedBusiness]);
+    // Only re-run when the business changes, not when updateSelectedBusiness reference changes
+  }, [selectedBusiness?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -526,7 +533,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedBusiness]);
+  }, [selectedBusiness?.id]);
 
   // ── Initial Mount & Auto-Refresh Hook ───────────────────────────
   useEffect(() => {
@@ -668,6 +675,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
         isRefreshing={isRefreshing}
         lastUpdatedSeconds={lastUpdatedSeconds}
         onNavigate={onNavigate}
+        onToggleConnection={() => setShowIntegrationSnippet(true)}
       />
 
       {/* ── Real Website vs Awaiting Telemetry Connection Bar ──────────── */}
@@ -745,7 +753,7 @@ export default function DashboardPage({ onNavigate, onShowToast }) {
       <BusinessMetricsRow
         businessType={selectedBusiness?.type || 'ecommerce'}
         isLive={isConnected}
-        isSyncing={isRefreshing}
+        isSyncing={hasLiveData && isRefreshing}
         hasLiveData={hasLiveData}
         liveTierMetrics={liveTierMetrics}
       />

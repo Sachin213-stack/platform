@@ -363,7 +363,7 @@ export function validateUrl(url) {
  * Checks authentic telemetry receipt directly from the FastAPI backend ingestion pipeline.
  * Does not emit synthetic beacons or simulate successful states.
  */
-export async function verifySnippetInstallation({ businessId, websiteUrl, apiKey = null }) {
+export async function verifySnippetInstallation({ businessId, websiteUrl }) {
   if (!businessId) {
     return {
       success: false,
@@ -378,7 +378,7 @@ export async function verifySnippetInstallation({ businessId, websiteUrl, apiKey
   }
 
   try {
-    const res = await ingestionApi.getVerificationStatus(businessId, apiKey);
+    const res = await ingestionApi.getVerificationStatus(businessId);
 
     if (res && res.verified) {
       const latencyStr = res.connection?.latency_ms || (res.last_event?.response_time_ms != null ? `${Math.round(res.last_event.response_time_ms)}ms` : null);
